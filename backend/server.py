@@ -6,9 +6,9 @@ import json
 import logging
 from datetime import datetime, timezone
 from typing import List, Dict, Any
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager # <-- NEW IMPORT
 
-from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException, Depends # <-- UPDATED IMPORT
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import nltk
@@ -33,25 +33,32 @@ try:
 except LookupError:
     nltk.download("stopwords")
 
-# --- NEW: Rate Limiter Lifespan Event ---
+# --- NEW: Robust Rate Limiter Lifespan Event ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Initializes the rate limiter on app startup.
-    Connects to Redis if available, otherwise logs a warning.
+    Connects to Redis if REDIS_URL is set, otherwise falls back to in-memory.
     """
-    redis_url = os.getenv("REDIS_URL", "redis://localhost")
-    try:
-        rd = redis.from_url(redis_url)
-        await rd.ping()
-        await FastAPILimiter.init(rd)
-        logging.info("FastAPILimiter initialized with Redis.")
-    except Exception as e:
-        logging.warning(f"Could not connect to Redis at {redis_url}. Reason: {e}")
-        logging.warning("Rate limiting will NOT be effective in a multi-worker production environment.")
-        # Fallback to in-memory storage (only works for a single worker process)
-        from fastapi_limiter.core import RateLimiterMemoryStorage
-        await FastAPILimiter.init(RateLimiterMemoryStorage())
+    redis_url = os.getenv("REDIS_URL") # Get the URL from environment
+    
+    if redis_url:
+        # If REDIS_URL is provided, try to connect
+        try:
+            rd = redis.from_url(redis_url)
+            await rd.ping()
+            await FastAPILimiter.init(rd)
+            logging.info(f"FastAPILimiter initialized with Redis at {redis_url}")
+        except Exception as e:
+            logging.warning(f"Could not connect to Redis at {redis_url}. Reason: {e}. Falling back to in-memory storage.")
+            # Fallback to in-memory if Redis connection fails
+            from fastapi_limiter.backends.in_memory import InMemmoryBackend # <-- Correct Import
+            await FastAPILimiter.init(InMemmoryBackend())
+    else:
+        # If no REDIS_URL is set, default to in-memory (for development/testing)
+        logging.warning("No REDIS_URL env var found. Rate limiting will not be shared across workers.")
+        from fastapi_limiter.backends.in_memory import InMemmoryBackend # <-- Correct Import
+        await FastAPILimiter.init(InMemmoryBackend())
     
     yield
     
@@ -354,7 +361,7 @@ async def get_analysis_detail(analysis_id: str):
     item = await db.analysis_results.find_one({"id": analysis_id})
     
     if not item:
-        raise HTTPException(status_code=404, detail="Analysis not found")
+        raise HTTPException(status_code=4OF, detail="Analysis not found")
         
     return AnalysisResponse(**item)
 
