@@ -12,15 +12,18 @@ import {
   Brain,
   BarChart3,
   Download,
+  Clock, // <-- NEW: Import Clock icon for History
 } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./components/ui/card";
 import { Textarea } from "./components/ui/textarea";
 import { Progress } from "./components/ui/progress";
 import { Badge } from "./components/ui/badge";
-import { Toaster } from "./components/ui/toaster"; // <-- NEW: Import Toaster
-import { toast, useToast } from "./hooks/use-toast"; // <-- NEW: Import toast hook
-import { Input } from "./components/ui/input"; // <-- ADDED: Assuming this is the path to your Input component
+import { Toaster } from "./components/ui/toaster";
+import { toast, useToast } from "./hooks/use-toast";
+import { Input } from "./components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./components/ui/table"; // <-- NEW: Table Imports
+import { Skeleton } from "./components/ui/skeleton"; // <-- NEW: Skeleton Import
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL; // e.g. https://ai-resume-checker-f4xs.onrender.com
 const BACKEND_ROOT = BACKEND_URL 
@@ -54,13 +57,34 @@ function App() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [resumeText, setResumeText] = useState("");
   const [jobDescription, setJobDescription] = useState("");
-  const [targetJobTitle, setTargetJobTitle] = useState(""); // <-- NEW: State for Job Title
+  const [targetJobTitle, setTargetJobTitle] = useState("");
   const [analysis, setAnalysis] = useState(null);
   const [loadingAnalyze, setLoadingAnalyze] = useState(false);
   const [loadingUpload, setLoadingUpload] = useState(false);
+  const [history, setHistory] = useState([]); // <-- NEW: State for history data
+  const [loadingHistory, setLoadingHistory] = useState(false); // <-- NEW: State for history loading
   const [activeTab, setActiveTab] = useState("upload");
   const fileInputRef = useRef(null);
-  const { toast } = useToast(); // <-- NEW: Initialize toast
+  const { toast } = useToast();
+
+  // --- Utility to fetch analysis history ---
+  const fetchHistory = async () => {
+    setLoadingHistory(true);
+    try {
+      const { data } = await api.get("/analysis-history");
+      setHistory(data);
+    } catch (err) {
+      console.error("History fetch error", err?.response || err);
+      toast({
+        variant: "destructive",
+        title: "History Failed",
+        description: "Could not fetch analysis history: " + (err?.response?.data?.detail || err.message),
+      });
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
 
   // --- File selection (does NOT upload) ---
   const onFileChange = (e) => {
@@ -148,7 +172,7 @@ function App() {
       const { data } = await api.post("/analyze", {
         resume_text: resumeText,
         job_description: jobDescription,
-        target_job_title: targetJobTitle, // <-- NEW: Pass job title
+        target_job_title: targetJobTitle,
       });
       setAnalysis(data);
       setActiveTab("results");
@@ -221,6 +245,17 @@ function App() {
           >
             <BarChart3 className="w-4 h-4" />
             View Results
+          </Button>
+          <Button // <-- NEW: History Button
+            variant={activeTab === "history" ? "default" : "ghost"}
+            onClick={() => {
+              setActiveTab("history");
+              fetchHistory(); // Fetch data when clicking the tab
+            }}
+            className="w-full sm:flex-1 gap-2"
+          >
+            <Clock className="w-4 h-4" />
+            History
           </Button>
         </div>
 
@@ -382,8 +417,7 @@ function App() {
               </CardContent>
             </Card>
 
-            <div className="lg:col-span-2 space-y-4"> {/* <-- ADDED space-y-4 */}
-              {/* NEW: Input for Target Job Title */}
+            <div className="lg:col-span-2 space-y-4">
               <Input
                   value={targetJobTitle}
                   onChange={(e) => setTargetJobTitle(e.target.value)}
@@ -437,7 +471,7 @@ function App() {
               </CardContent>
             </Card>
 
-            {/* NEW: ATS Compatibility Score Card */}
+            {/* ATS Compatibility Score Card */}
             <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -533,7 +567,7 @@ function App() {
               </CardContent>
             </Card>
 
-            {/* NEW: Quantification Feedback Card */}
+            {/* Quantification Feedback Card */}
             {analysis.quantification_feedback?.length > 0 && (
                 <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
                     <CardHeader>
@@ -562,7 +596,7 @@ function App() {
                   setSelectedFile(null);
                   setResumeText("");
                   setJobDescription("");
-                  setTargetJobTitle(""); // <-- ADDED
+                  setTargetJobTitle("");
                   setAnalysis(null);
                 }}
                 variant="outline"
@@ -578,6 +612,69 @@ function App() {
               </Button>
             </div>
           </div>
+        )}
+        
+        {/* History Tab */}
+        {activeTab === "history" && (
+            <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-2xl">
+                        <Clock className="w-6 h-6 text-indigo-600" />
+                        Analysis History (Last 10)
+                    </CardTitle>
+                    <CardDescription>
+                        Review past resume-job description match analyses.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {loadingHistory ? (
+                        <div className="space-y-4">
+                            <Skeleton className="h-10 w-full" />
+                            <Skeleton className="h-10 w-full" />
+                            <Skeleton className="h-10 w-1/2" />
+                        </div>
+                    ) : history.length === 0 ? (
+                        <p className="text-center text-slate-500 py-8">No analysis history found. Start by analyzing a match!</p>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-[100px]">Date</TableHead>
+                                        <TableHead className="w-[150px]">Target Role</TableHead>
+                                        <TableHead>Summary</TableHead>
+                                        <TableHead className="text-right">Match %</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {history.map((item) => (
+                                        <TableRow 
+                                            key={item.id} 
+                                            onClick={() => { /* Next Step: Open Detail Modal */ }} 
+                                            className="cursor-pointer hover:bg-slate-100/50 transition-colors"
+                                        >
+                                            <TableCell className="font-medium text-xs">
+                                                {new Date(item.created_at).toLocaleDateString('en-US')}
+                                            </TableCell>
+                                            <TableCell className="font-medium">
+                                                {item.target_job_title || "General Role"}
+                                            </TableCell>
+                                            <TableCell className="text-sm text-slate-600">
+                                                {item.analysis_summary.substring(0, 70)}...
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Badge className={getMatchColor(item.match_percentage)}>
+                                                    {Math.round(item.match_percentage)}%
+                                                </Badge>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
         )}
       </main>
 
@@ -600,7 +697,7 @@ function App() {
 
         </div>
       </footer>
-      <Toaster /> {/* <-- RENDER TOASTER HERE */}
+      <Toaster />
     </div>
   );
 }

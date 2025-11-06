@@ -6,6 +6,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from typing import List, Dict, Any
+
 from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -61,16 +62,16 @@ class AnalysisResult(BaseModel):
     recommendations: List[str]
     resume_text: str
     job_description: str
-    target_job_title: str = Field(default="") # <-- ADDED
+    target_job_title: str = Field(default="")
     analysis_summary: str
-    ats_compatibility_score: float = Field(..., description="ATS score from 0.0 to 100.0 based on formatting/structure.") # <-- ADDED
-    quantification_feedback: List[str] = Field(..., description="Specific recommendations on where to add metrics/numbers.") # <-- ADDED
+    ats_compatibility_score: float = Field(..., description="ATS score from 0.0 to 100.0 based on formatting/structure.")
+    quantification_feedback: List[str] = Field(..., description="Specific recommendations on where to add metrics/numbers.")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class AnalysisResultCreate(BaseModel):
     resume_text: str
     job_description: str
-    target_job_title: str = Field(default="") # <-- ADDED
+    target_job_title: str = Field(default="")
 
 class AnalysisResponse(BaseModel):
     id: str
@@ -81,9 +82,9 @@ class AnalysisResponse(BaseModel):
     analysis_summary: str
     resume_text: str
     job_description: str
-    target_job_title: str # <-- ADDED
-    ats_compatibility_score: float # <-- ADDED
-    quantification_feedback: List[str] # <-- ADDED
+    target_job_title: str
+    ats_compatibility_score: float
+    quantification_feedback: List[str]
 
 # ----------------------------
 # Utilities
@@ -134,8 +135,66 @@ def calculate_basic_similarity(resume_text: str, job_description: str) -> float:
     except Exception:
         return 0.0
 
+def get_missing_skills_from_tfidf(resume_text: str, job_description: str) -> List[str]:
+    """
+    Identifies high-value keywords in the JD that are missing from the resume
+    using TF-IDF for a more intelligent fallback.
+    """
+    try:
+        # Ensure texts are preprocessed for token matching
+        processed_resume = preprocess_text(resume_text)
+        
+        # Use TfidfVectorizer on both documents (single words only for skills)
+        v = TfidfVectorizer(stop_words="english", ngram_range=(1, 1))
+        # Note: We fit/transform the JD first to correctly analyze the JD's terms
+        m = v.fit_transform([job_description, processed_resume])
+        
+        # JD vector is at index 0, Resume vector at index 1
+        jd_vector = m[0].toarray()[0]
+        feature_names = np.array(v.get_feature_names_out())
+
+        # Find the indices sorted by highest JD TF-IDF score
+        # This prioritizes words most unique/important to the Job Description
+        sorted_indices = jd_vector.argsort()[::-1]
+        
+        missing_skills = []
+        resume_tokens = set(processed_resume.split())
+        
+        # Check against a small set of predefined skills AND top JD keywords
+        potential_skills = extract_skills_from_text(job_description) + [
+            feature_names[i] for i in sorted_indices if jd_vector[i] > 0.1
+        ]
+        
+        # Filter and collect the top 5 missing unique terms
+        # Sort by the JD's keyword importance (TF-IDF score)
+        jd_keyword_scores = {
+            feature_names[i]: jd_vector[i]
+            for i in range(len(feature_names))
+        }
+        
+        # Sort potential skills by their importance in the JD (highest score first)
+        sorted_potential_skills = sorted(
+            set(potential_skills), 
+            key=lambda x: jd_keyword_scores.get(x, 0), 
+            reverse=True
+        )
+        
+        for term in sorted_potential_skills:
+            if term not in resume_tokens:
+                missing_skills.append(term.capitalize())
+            if len(missing_skills) >= 5:
+                break
+        
+        # Final fallback to general soft skills if no technical keywords are found
+        return missing_skills or ["Communication", "Adaptability", "Problem Solving"] 
+
+    except Exception as e:
+        logging.warning(f"TFIDF missing skills failed: {e}")
+        return ["Communication", "Leadership", "Project Management"]
+
+
 # ---- Optional Gemini via emergentintegrations ----
-async def analyze_with_ai(resume_text: str, job_description: str, target_job_title: str) -> Dict[str, Any]: # <-- UPDATED SIGNATURE
+async def analyze_with_ai(resume_text: str, job_description: str, target_job_title: str) -> Dict[str, Any]:
     """
     If EMERGENT_LLM_KEY is present and emergentintegrations is installed, try AI;
     otherwise fall back to TF-IDF.
@@ -146,7 +205,7 @@ async def analyze_with_ai(resume_text: str, job_description: str, target_job_tit
             raise RuntimeError("EMERGENT_LLM_KEY not configured")
 
         # lazy import to avoid hard dependency
-        from emergentintegrations.llm.chat import LlmChat, UserMessage  # type: ignore
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
 
         chat = LlmChat(
             api_key=api_key,
@@ -198,8 +257,8 @@ Focus on:
                 "missing_skills": list(payload.get("missing_skills", [])),
                 "recommendations": list(payload.get("recommendations", [])),
                 "analysis_summary": str(payload.get("analysis_summary", "AI analysis completed.")),
-                "ats_compatibility_score": float(payload.get("ats_compatibility_score", 0)), # <-- ADDED
-                "quantification_feedback": list(payload.get("quantification_feedback", [])), # <-- ADDED
+                "ats_compatibility_score": float(payload.get("ats_compatibility_score", 0)),
+                "quantification_feedback": list(payload.get("quantification_feedback", [])),
             }
 
         # Fallback if parsing fails
@@ -208,18 +267,22 @@ Focus on:
     except Exception as e:
         logging.warning(f"AI analysis unavailable, using basic similarity. Reason: {e}")
         score = calculate_basic_similarity(resume_text, job_description)
+        
+        # --- UPDATED FALLBACK: Use intelligent keyword analysis ---
+        missing_skills_list = get_missing_skills_from_tfidf(resume_text, job_description)
+
         return {
             "match_percentage": score,
             "matched_skills": extract_skills_from_text(resume_text)[:5],
-            "missing_skills": ["Communication", "Leadership", "Project Management"],
+            "missing_skills": missing_skills_list, # <-- NOW USES TF-IDF ANALYSIS
             "recommendations": [
                 "Highlight relevant experience more prominently",
                 "Add specific technical certifications",
                 "Include quantifiable achievements",
             ],
             "analysis_summary": f"Basic analysis completed with {score:.1f}% match score.",
-            "ats_compatibility_score": 70.0, # <-- ADDED fallback
-            "quantification_feedback": ["Consider adding metrics to 2-3 key accomplishments."], # <-- ADDED fallback
+            "ats_compatibility_score": 70.0,
+            "quantification_feedback": ["Consider adding metrics to 2-3 key accomplishments."],
         }
 
 # ----------------------------
@@ -255,7 +318,7 @@ async def analyze_resume_job_match(payload: AnalysisResultCreate):
         raise HTTPException(status_code=400, detail="Both resume text and job description are required")
 
     # AI or basic similarity
-    result = await analyze_with_ai(resume_text, jd_text, payload.target_job_title) # <-- UPDATED CALL
+    result = await analyze_with_ai(resume_text, jd_text, payload.target_job_title)
 
     doc = AnalysisResult(
         match_percentage=result["match_percentage"],
@@ -265,9 +328,9 @@ async def analyze_resume_job_match(payload: AnalysisResultCreate):
         analysis_summary=result["analysis_summary"],
         resume_text=payload.resume_text,
         job_description=payload.job_description,
-        target_job_title=payload.target_job_title, # <-- ADDED
-        ats_compatibility_score=result["ats_compatibility_score"], # <-- ADDED
-        quantification_feedback=result["quantification_feedback"], # <-- ADDED
+        target_job_title=payload.target_job_title,
+        ats_compatibility_score=result["ats_compatibility_score"],
+        quantification_feedback=result["quantification_feedback"],
     )
 
     # Save to Mongo
@@ -283,8 +346,6 @@ async def get_analysis_history():
     out: List[AnalysisResponse] = []
     for x in items or []:
         x.pop("_id", None)
-        # Note: You should update this part to only return a snippet of resume/JD
-        # if you decide to implement the data minimization change.
         out.append(AnalysisResponse(**x))
     return out
 
