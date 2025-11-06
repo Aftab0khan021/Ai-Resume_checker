@@ -5,7 +5,6 @@ import uuid
 import json
 import logging
 from datetime import datetime, timezone
-from typing import List, Dict, Any
 from contextlib import asynccontextmanager 
 
 from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException, Depends
@@ -25,6 +24,7 @@ from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
 # --- FIXED IMPORT: This is the correct path ---
 from fastapi_limiter.backends.memory import MemoryBackend 
+from fastapi_limiter.backends.redis import RedisBackend # <-- ADD THIS
 
 try:
     nltk.data.find("tokenizers/punkt")
@@ -49,16 +49,16 @@ async def lifespan(app: FastAPI):
         try:
             rd = redis.from_url(redis_url)
             await rd.ping()
-            await FastAPILimiter.init(rd)
+            await FastAPILimiter.init(RedisBackend(rd)) # <-- FIXED: Wrap in RedisBackend
             logging.info(f"FastAPILimiter initialized with Redis at {redis_url}")
         except Exception as e:
             logging.warning(f"Could not connect to Redis at {redis_url}. Reason: {e}. Falling back to in-memory storage.")
             # Fallback to in-memory if Redis connection fails
-            await FastAPILimiter.init(MemoryBackend()) # <-- FIXED
+            await FastAPILimiter.init(MemoryBackend())
     else:
         # If no REDIS_URL is set, default to in-memory (for development/testing)
         logging.warning("No REDIS_URL env var found. Rate limiting will not be shared across workers.")
-        await FastAPILimiter.init(MemoryBackend()) # <-- FIXED
+        await FastAPILimiter.init(MemoryBackend())
     
     yield
     
