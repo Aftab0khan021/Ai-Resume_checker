@@ -8,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
  * Component for the "Upload Resume" tab.
  * Manages file selection, drag-and-drop, and uploading.
  */
-const UploadTab = ({ resumeText, setResumeText, setActiveTab, api, toast }) => { // <-- UPDATED: Added resumeText prop
+// <-- UPDATED: Added resumeText prop
+const UploadTab = ({ resumeText, setResumeText, setActiveTab, api, toast }) => { 
   const [selectedFile, setSelectedFile] = useState(null);
   const [loadingUpload, setLoadingUpload] = useState(false);
   // --- UPDATED: Initialize with parent state ---
@@ -180,5 +181,4 @@ const UploadTab = ({ resumeText, setResumeText, setActiveTab, api, toast }) => {
     </div>
   );
 };
-
 export default UploadTab;

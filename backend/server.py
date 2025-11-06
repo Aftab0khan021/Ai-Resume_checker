@@ -361,7 +361,7 @@ async def get_analysis_detail(analysis_id: str):
     item = await db.analysis_results.find_one({"id": analysis_id})
     
     if not item:
-        raise HTTPException(status_code=4OF, detail="Analysis not found")
+        raise HTTPException(status_code=404, detail="Analysis not found") # <-- BUG FIX: Was 4OF
         
     return AnalysisResponse(**item)
 
