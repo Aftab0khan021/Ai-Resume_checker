@@ -5,6 +5,7 @@ import uuid
 import json
 import logging
 from datetime import datetime, timezone
+from typing import List, Dict, Any
 from contextlib import asynccontextmanager 
 
 from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException, Depends
@@ -18,13 +19,11 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from app.db import get_db
 
-# --- NEW: Rate Limiting Imports ---
-import redis.asyncio as redis
-from fastapi_limiter import FastAPILimiter
-from fastapi_limiter.depends import RateLimiter
-# --- FIXED IMPORT: This is the correct path ---
-from fastapi_limiter.backends.memory import MemoryBackend 
-from fastapi_limiter.backends.redis import RedisBackend # <-- ADD THIS
+# --- NEW: Rate Limiting Imports using slowapi ---
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from starlette.requests import Request
 
 try:
     nltk.data.find("tokenizers/punkt")
@@ -35,39 +34,38 @@ try:
 except LookupError:
     nltk.download("stopwords")
 
-# --- NEW: Robust Rate Limiter Lifespan Event ---
+# --- NEW: Setup slowapi Limiter ---
+# We use the 'get_remote_address' function to identify users by their IP
+limiter = Limiter(key_func=get_remote_address, default_limits=["1000/hour"])
+# We will apply specific limits to routes using 'Depends'
+
+# --- NEW: Lifespan (just for MongoDB) ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Initializes the rate limiter on app startup.
-    Connects to Redis if REDIS_URL is set, otherwise falls back to in-memory.
-    """
-    redis_url = os.getenv("REDIS_URL") # Get the URL from environment
-    
-    if redis_url:
-        # If REDIS_URL is provided, try to connect
-        try:
-            rd = redis.from_url(redis_url)
-            await rd.ping()
-            await FastAPILimiter.init(RedisBackend(rd)) # <-- FIXED: Wrap in RedisBackend
-            logging.info(f"FastAPILimiter initialized with Redis at {redis_url}")
-        except Exception as e:
-            logging.warning(f"Could not connect to Redis at {redis_url}. Reason: {e}. Falling back to in-memory storage.")
-            # Fallback to in-memory if Redis connection fails
-            await FastAPILimiter.init(MemoryBackend())
-    else:
-        # If no REDIS_URL is set, default to in-memory (for development/testing)
-        logging.warning("No REDIS_URL env var found. Rate limiting will not be shared across workers.")
-        await FastAPILimiter.init(MemoryBackend())
+    # Connect to MongoDB
+    global db
+    try:
+        client = AsyncIOMotorClient(os.getenv("MONGO_URL"))
+        db = client[os.getenv("DB_NAME", "resume_matcher_db")]
+        # Ping the server
+        await client.admin.command('ping')
+        logging.info("Successfully connected to MongoDB!")
+    except Exception as e:
+        logging.warning(f"Error connecting to MongoDB: {e}")
+        db = None # Handle connection failure gracefully
     
     yield
     
-    # Clean up on shutdown
-    await FastAPILimiter.close()
+    # No cleanup needed for slowapi
 
 
-app = FastAPI(title="AI Resume & Job Matcher API", lifespan=lifespan) # <-- UPDATED: Added lifespan
+app = FastAPI(title="AI Resume & Job Matcher API", lifespan=lifespan)
 api = APIRouter(prefix="/api")
+
+# --- NEW: Add slowapi state and exception handler ---
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 
 DEFAULT_ORIGINS = [
     "http://localhost:3000",
@@ -91,7 +89,7 @@ app.add_middleware(
 )
 
 # ----------------------------
-# Models
+# Models (No Change)
 # ----------------------------
 class AnalysisResult(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -133,7 +131,7 @@ class SummaryResponse(BaseModel):
     summaries: List[str]
 
 # ----------------------------
-# Utilities
+# Utilities (No Change)
 # ----------------------------
 def extract_text_from_pdf(file_content: bytes) -> str:
     try:
@@ -222,7 +220,7 @@ def get_missing_skills_from_tfidf(resume_text: str, job_description: str) -> Lis
         return ["Communication", "Leadership", "Project Management"]
 
 
-# ---- Optional Gemini via emergentintegrations ----
+# ---- AI Analysis (No Change) ----
 async def analyze_with_ai(resume_text: str, job_description: str, target_job_title: str) -> Dict[str, Any]:
     try:
         api_key = os.getenv("EMERGENT_LLM_KEY")
@@ -327,9 +325,9 @@ async def upload_resume(file: UploadFile = File(...)):
 
     return {"text": text, "filename": file.filename}
 
-# --- UPDATED: Added Rate Limiting Dependency ---
-@api.post("/analyze", response_model=AnalysisResponse, dependencies=[Depends(RateLimiter(times=10, minutes=1))])
-async def analyze_resume_job_match(payload: AnalysisResultCreate):
+# --- UPDATED: Added Rate Limiting with slowapi ---
+@api.post("/analyze", response_model=AnalysisResponse, dependencies=[Depends(limiter.limit("10/minute"))])
+async def analyze_resume_job_match(request: Request, payload: AnalysisResultCreate):
     resume_text = preprocess_text(payload.resume_text)
     jd_text = preprocess_text(payload.job_description)
     if not resume_text or not jd_text:
@@ -361,7 +359,7 @@ async def get_analysis_detail(analysis_id: str):
     item = await db.analysis_results.find_one({"id": analysis_id})
     
     if not item:
-        raise HTTPException(status_code=404, detail="Analysis not found") # <-- BUG FIX: Was 4OF
+        raise HTTPException(status_code=404, detail="Analysis not found")
         
     return AnalysisResponse(**item)
 
@@ -374,7 +372,7 @@ async def get_analysis_history():
         "job_description": 0
     }
     
-    cursor = db.analysis_results.find({}, projection).sort("created_at", -1).limit(10)
+    cursor = db.analysis_results..find({}, projection).sort("created_at", -1).limit(10)
     items = await cursor.to_list(length=None)
     
     out: List[AnalysisResponse] = []
@@ -387,12 +385,12 @@ async def get_analysis_history():
         out.append(AnalysisResponse(**x))
     return out
 
-# --- UPDATED: Added Rate Limiting Dependency ---
-@api.post("/generate-summary", response_model=SummaryResponse, dependencies=[Depends(RateLimiter(times=10, minutes=1))])
-async def generate_summary(payload: SummaryRequest):
+# --- UPDATED: Added Rate Limiting with slowapi ---
+@api.post("/generate-summary", response_model=SummaryResponse, dependencies=[Depends(limiter.limit("10/minute"))])
+async def generate_summary(request: Request, payload: SummaryRequest):
     resume_text = preprocess_text(payload.resume_text)
     if not resume_text:
-        raise HTTPException(status_code=400, detail="Resume text is required") # <-- BUG FIX: Was 40Z00
+        raise HTTPException(status_code=400, detail="Resume text is required")
 
     try:
         api_key = os.getenv("EMERGENT_LLM_KEY")
