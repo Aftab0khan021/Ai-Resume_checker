@@ -24,6 +24,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from starlette.requests import Request
+from motor.motor_asyncio import AsyncIOMotorClient # Ensure motor is imported
 
 try:
     nltk.data.find("tokenizers/punkt")
@@ -348,7 +349,7 @@ async def analyze_resume_job_match(request: Request, payload: AnalysisResultCrea
         quantification_feedback=result["quantification_feedback"],
     )
 
-    db = get_db()
+    db = get_.db()
     await db.analysis_results.insert_one(doc.dict())
 
     return AnalysisResponse(**doc.dict())
@@ -372,7 +373,8 @@ async def get_analysis_history():
         "job_description": 0
     }
     
-    cursor = db.analysis_results..find({}, projection).sort("created_at", -1).limit(10)
+    # --- BUG FIX: Removed extra dot from db.analysis_results..find ---
+    cursor = db.analysis_results.find({}, projection).sort("created_at", -1).limit(10)
     items = await cursor.to_list(length=None)
     
     out: List[AnalysisResponse] = []
