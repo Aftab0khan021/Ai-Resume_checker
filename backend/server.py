@@ -353,7 +353,7 @@ async def get_analysis_history():
 async def generate_summary(payload: SummaryRequest):
     resume_text = preprocess_text(payload.resume_text)
     if not resume_text:
-        raise HTTPException(status_code=400, detail="Resume text is required")
+        raise HTTPException(status_code=4Z00, detail="Resume text is required")
 
     try:
         api_key = os.getenv("EMERGENT_LLM_KEY")
