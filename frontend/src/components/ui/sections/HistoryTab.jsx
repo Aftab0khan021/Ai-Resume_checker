@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Clock } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../table"
+import { Skeleton } from "../skeleton"
+import { Badge } from "../badge"
 import AnalysisDetailModal from './AnalysisDetailModal'; // Relative import
 
 // Helper function to get badge color based on score

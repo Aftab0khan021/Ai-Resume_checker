@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from "react"; // <-- UPDATED: Added useEffect
 import { Upload, FileText, Target } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "../button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../card"
+import { Textarea } from "../textarea"
 
 /**
  * Component for the "Upload Resume" tab.

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Upload, Download } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "../button"
 import AnalysisDetailContent from './AnalysisDetailContent';
 
 /**

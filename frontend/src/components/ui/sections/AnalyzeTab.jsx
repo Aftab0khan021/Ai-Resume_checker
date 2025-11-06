@@ -1,10 +1,9 @@
 import React from 'react';
 import { FileText, Target, Brain, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-
+import { Button } from "../button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../card"
+import { Textarea } from "../textarea"
+import { Input } from "../input"
 /**
  * Component for the "Analyze Match" tab.
  * Manages text inputs and triggers the analysis or summary generation.

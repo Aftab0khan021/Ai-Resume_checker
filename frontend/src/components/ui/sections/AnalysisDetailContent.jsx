@@ -7,17 +7,11 @@ import {
   Brain,
   Target,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { ScrollArea } from "@/components/ui/scroll-area";
-
+import { Card, CardContent, CardHeader, CardTitle } from "../card"
+import { Progress } from "../progress"
+import { Badge } from "../badge"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../accordion"
+import { ScrollArea } from "../scroll-area"
 // Helper function to get badge color based on score
 const getMatchColor = (percentage) => {
   if (percentage >= 80) return "bg-emerald-500";
