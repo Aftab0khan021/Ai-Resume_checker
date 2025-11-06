@@ -1,148 +1,177 @@
-import React, { useState, useCallback } from "react";
-import { useDropzone } from "react-dropzone";
-import { Upload, FileText, CheckCircle, XCircle } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { Upload, FileText, Target } from "lucide-react";
 // --- FIXED IMPORTS ---
 import { Button } from "../button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../card";
 import { Textarea } from "../textarea";
 // ---------------------
 
+/**
+ * Component for the "Upload Resume" tab.
+ * Manages file selection, drag-and-drop, and uploading.
+ */
 const UploadTab = ({ resumeText, setResumeText, setActiveTab, api, toast }) => {
-  const [fileName, setFileName] = useState("");
-  const [uploadStatus, setUploadStatus] = useState("idle"); // idle, uploading, success, error
-  const [isPasting, setIsPasting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [loadingUpload, setLoadingUpload] = useState(false);
+  const [internalResumeText, setInternalResumeText] = useState(resumeText);
+  const fileInputRef = useRef(null);
 
-  const onDrop = useCallback(
-    async (acceptedFiles) => {
-      const file = acceptedFiles[0];
-      if (!file) return;
+  useEffect(() => {
+    setInternalResumeText(resumeText);
+  }, [resumeText]);
 
-      setFileName(file.name);
-      setUploadStatus("uploading");
-      setResumeText(""); // Clear previous text
+  const onFileChange = (e) => {
+    const file = e.target.files?.[0] || null;
+    setSelectedFile(file);
+  };
 
-      const formData = new FormData();
-      formData.append("file", file);
+  const handleDragOver = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
 
-      try {
-        const { data } = await api.post("/upload-resume", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-        setResumeText(data.text);
-        setUploadStatus("success");
-        toast({
-          title: "Upload Successful",
-          description: `Extracted ${data.text.length} characters from ${file.name}.`,
-        });
-        // Automatically switch to the next tab on success
-        setTimeout(() => setActiveTab("analyze"), 1000);
-      } catch (err) {
-        console.error("File upload error", err?.response || err);
-        setUploadStatus("error");
-        toast({
-          variant: "destructive",
-          title: "Upload Failed",
-          description: err?.response?.data?.detail || err.message,
-        });
-      }
-    },
-    [api, setResumeText, setActiveTab, toast]
-  );
+  const handleDrop = async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const files = event.dataTransfer.files;
+    if (files?.length > 0) {
+      setSelectedFile(files[0]);
+    }
+  };
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      "application/pdf": [".pdf"],
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
-      "application/msword": [".doc"],
-    },
-    maxFiles: 1,
-  });
-
-  const handlePasteToggle = () => {
-    setIsPasting(!isPasting);
-    setUploadStatus("idle");
-    setFileName("");
+  const handleFileUpload = async (e) => {
+    e?.preventDefault?.();
+    if (!selectedFile) {
+      toast({
+        variant: "destructive",
+        title: "Upload Error",
+        description: "Please select a PDF/DOC/DOCX file first.",
+      });
+      return;
+    }
+    try {
+      setLoadingUpload(true);
+      const form = new FormData();
+      form.append("file", selectedFile);
+      const { data } = await api.post("/upload-resume", form, {
+        maxBodyLength: 25 * 1024 * 1024,
+      });
+      setResumeText(data?.text || ""); 
+      setActiveTab("analyze"); 
+    } catch (err) {
+      console.error("Upload error", err?.response || err);
+      toast({
+        variant: "destructive",
+        title: "Upload Failed",
+        description: err?.response?.data?.detail || err.message,
+      });
+    } finally {
+      setLoadingUpload(false);
+    }
   };
   
-  const handleTextChange = (e) => {
-    setResumeText(e.target.value);
-    if (e.target.value.length > 10) {
-      setUploadStatus("success");
-      setFileName("Pasted Text");
-    } else {
-      setUploadStatus("idle");
-      setFileName("");
-    }
+  const handleContinueFromPaste = () => {
+    setResumeText(internalResumeText); // Sync parent state
+    setActiveTab("analyze");
   };
 
   return (
     <div className="space-y-6">
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold">Upload Your Resume</CardTitle>
-          <CardDescription>
-            {isPasting 
-              ? "Paste your resume text into the box below." 
-              : "Drag & drop your .pdf or .docx file here, or click to select."}
+      <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
+        <CardHeader className="text-center pb-4">
+          <CardTitle className="text-2xl flex items-center gap-3 justify-center">
+            <FileText className="w-8 h-8 text-indigo-600" />
+            Upload Your Resume
+          </CardTitle>
+          <CardDescription className="text-lg">
+            Upload your resume in PDF or DOCX format to get started
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          {isPasting ? (
-            <div className="space-y-4">
-              <Textarea
-                placeholder="Paste your resume content here..."
-                className="h-64"
-                value={resumeText}
-                onChange={handleTextChange}
+        <CardContent className="space-y-6">
+          <div
+            className="border-2 border-dashed border-indigo-300 rounded-xl p-6 sm:p-8 text-center hover:border-indigo-400 transition-colors"
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+          >
+            <div className="flex flex-col items-center gap-4">
+              <div className="p-4 bg-indigo-100 rounded-full">
+                <Upload className="w-8 h-8 text-indigo-600" />
+              </div>
+              <div>
+                <p className="text-lg font-medium text-slate-900">Choose your resume file</p>
+                <p className="text-slate-600">PDF or DOCX files supported</p>
+                <p className="text-sm text-slate-500 mt-1">Or drag and drop a file here</p>
+              </div>
+              <input
+                ref={fileInputRef}
+                id="resume-upload"
+                type="file"
+                accept=".pdf,.docx,.doc"
+                onChange={onFileChange}
+                className="hidden"
               />
-              <Button onClick={handlePasteToggle} variant="outline" className="w-full">
-                Back to File Upload
-              </Button>
-            </div>
-          ) : (
-            <div
-              {...getRootProps()}
-              className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors
-                ${isDragActive ? "border-indigo-600 bg-indigo-50" : "border-slate-300 hover:border-slate-400"}`}
-            >
-              <input {...getInputProps()} />
-              <div className="flex flex-col items-center gap-2 text-slate-600">
-                <Upload className="w-12 h-12" />
-                <p className="font-semibold">
-                  {isDragActive ? "Drop the file here..." : "Click to upload or drag & drop"}
-                </p>
-                <p className="text-sm">Supports: PDF, DOCX, DOC</p>
+              <div className="flex flex-wrap items-stretch gap-3">
+                <Button type="button" size="lg" variant="outline" className="cursor-pointer w-full sm:w-auto" onClick={() => fileInputRef.current?.click()}>
+                  Select File
+                </Button>
+                <Button
+                  type="button"
+                  size="lg"
+                  onClick={handleFileUpload}
+                  disabled={!selectedFile || loadingUpload}
+                  className="cursor-pointer w-full sm:w-auto"
+                >
+                  {loadingUpload ? (
+                    <>
+                      <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+                      Upload & Extract...
+                    </>
+                  ) : (
+                    "Upload & Extract"
+                  )}
+                </Button>
               </div>
+              {selectedFile && (
+                <div className="text-sm text-slate-700 mt-1">
+                  Selected: <span className="font-medium">{selectedFile.name}</span>
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
-          {fileName && (
-            <div className="mt-4 flex items-center gap-3 p-3 bg-slate-100 rounded-lg">
-              <FileText className="w-6 h-6 text-slate-700" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-900 truncate">{fileName}</p>
-                {uploadStatus === "uploading" && <p className="text-sm text-slate-500">Uploading & Parsing...</p>}
-                {uploadStatus === "success" && <p className="text-sm text-green-600">Ready for Analysis</p>}
-                {uploadStatus === "error" && <p className="text-sm text-red-600">Upload Failed</p>}
-              </div>
-              {uploadStatus === "uploading" && <div className="w-5 h-5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />}
-              {uploadStatus === "success" && <CheckCircle className="w-5 h-5 text-green-600" />}
-              {uploadStatus === "error" && <XCircle className="w-5 h-5 text-red-600" />}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-px bg-slate-300" />
+              <span className="text-sm text-slate-500 px-3">OR</span>
+              <div className="flex-1 h-px bg-slate-300" />
             </div>
-          )}
-          
-          {!isPasting && (
-            <div className="mt-4 text-center">
-              <Button onClick={handlePasteToggle} variant="link">
-                ...or paste resume text instead
-              </Button>
-            </div>
-          )}
+            <Card className="border border-slate-200">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-indigo-600" />
+                  Paste Resume Text Directly
+                </CardTitle>
+                <CardDescription>Copy and paste your resume content here if you don't have a file</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  value={internalResumeText}
+                  onChange={(e) => setInternalResumeText(e.target.value)}
+                  placeholder="Paste your resume text here..."
+                  className="min-h-40 sm:min-h-52 md:min-h-64 resize-y"
+                />
+                {internalResumeText && (
+                  <Button onClick={handleContinueFromPaste} className="w-full gap-2 mt-3" size="lg">
+                    Continue to Analysis
+                    <Target className="w-4 h-4" />
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </CardContent>
       </Card>
     </div>
   );
 };
-
 export default UploadTab;

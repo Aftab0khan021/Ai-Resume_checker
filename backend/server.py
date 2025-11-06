@@ -349,7 +349,7 @@ async def analyze_resume_job_match(request: Request, payload: AnalysisResultCrea
         quantification_feedback=result["quantification_feedback"],
     )
 
-    db = get_.db()
+    db = get_db()
     await db.analysis_results.insert_one(doc.dict())
 
     return AnalysisResponse(**doc.dict())
