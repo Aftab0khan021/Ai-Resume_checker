@@ -6,9 +6,9 @@ import json
 import logging
 from datetime import datetime, timezone
 from typing import List, Dict, Any
-from contextlib import asynccontextmanager # <-- NEW IMPORT
+from contextlib import asynccontextmanager 
 
-from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException, Depends # <-- UPDATED IMPORT
+from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import nltk
@@ -23,6 +23,8 @@ from app.db import get_db
 import redis.asyncio as redis
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
+# --- FIXED IMPORT: This is the correct path ---
+from fastapi_limiter.backends.memory import MemoryBackend 
 
 try:
     nltk.data.find("tokenizers/punkt")
@@ -52,13 +54,11 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logging.warning(f"Could not connect to Redis at {redis_url}. Reason: {e}. Falling back to in-memory storage.")
             # Fallback to in-memory if Redis connection fails
-            from fastapi_limiter.backends.in_memory import InMemmoryBackend # <-- Correct Import
-            await FastAPILimiter.init(InMemmoryBackend())
+            await FastAPILimiter.init(MemoryBackend()) # <-- FIXED
     else:
         # If no REDIS_URL is set, default to in-memory (for development/testing)
         logging.warning("No REDIS_URL env var found. Rate limiting will not be shared across workers.")
-        from fastapi_limiter.backends.in_memory import InMemmoryBackend # <-- Correct Import
-        await FastAPILimiter.init(InMemmoryBackend())
+        await FastAPILimiter.init(MemoryBackend()) # <-- FIXED
     
     yield
     
@@ -72,6 +72,7 @@ api = APIRouter(prefix="/api")
 DEFAULT_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173",
+    "https.ai-resume-checker-2003.vercel.app", 
     "https://app-git-main-aftab-pathans-projects-9c06d6e7.vercel.app",
 ]
 
@@ -82,9 +83,8 @@ if _extra:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"^https://app(?:-[a-z0-9]+)*-aftab-pathans-projects-9c06d6e7\.vercel\.app$",
-    # Optional: also allow localhost for local dev
-    allow_origins=DEFAULT_ORIGINS + ["http://127.0.0.1:3000"],
+    allow_origin_regex=r"^(https?:\/\/localhost(:\d+)?|https:\/\/ai-resume-checker-2003\.vercel\.app|https:\/\/app(?:-[a-z0-9]+)*-aftab-pathans-projects-9c06d6e7\.vercel\.app)$",
+    allow_origins=DEFAULT_ORIGINS, 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
