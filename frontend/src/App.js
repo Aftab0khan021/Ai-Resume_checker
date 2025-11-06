@@ -195,6 +195,9 @@ function App() {
       document.body.removeChild(ta);
     }
   };
+  
+  // --- Animation classes for nav buttons ---
+  const navButtonClasses = "w-full sm:flex-1 gap-2 transform transition-transform duration-150 active:scale-95";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -219,7 +222,7 @@ function App() {
           <Button
             variant={activeTab === "upload" ? "default" : "ghost"}
             onClick={() => setActiveTab("upload")}
-            className="w-full sm:flex-1 gap-2"
+            className={navButtonClasses} // <-- UPDATED
           >
             <Upload className="w-4 h-4" />
             Upload Resume
@@ -227,7 +230,7 @@ function App() {
           <Button
             variant={activeTab === "analyze" ? "default" : "ghost"}
             onClick={() => setActiveTab("analyze")}
-            className="w-full sm:flex-1 gap-2"
+            className={navButtonClasses} // <-- UPDATED
           >
             <Target className="w-4 h-4" />
             Analyze Match
@@ -235,7 +238,7 @@ function App() {
           <Button
             variant={activeTab === "results" ? "default" : "ghost"}
             onClick={() => setActiveTab("results")}
-            className="w-full sm:flex-1 gap-2"
+            className={navButtonClasses} // <-- UPDATED
             disabled={!analysis}
           >
             <BarChart3 className="w-4 h-4" />
@@ -244,7 +247,7 @@ function App() {
           <Button
             variant={activeTab === "history" ? "default" : "ghost"}
             onClick={() => setActiveTab("history")}
-            className="w-full sm:flex-1 gap-2"
+            className={navButtonClasses} // <-- UPDATED
           >
             <Clock className="w-4 h-4" />
             History
@@ -255,6 +258,7 @@ function App() {
         
         {activeTab === "upload" && (
           <UploadTab 
+            resumeText={resumeText} // <-- UPDATED: Pass resumeText prop
             setResumeText={setResumeText} 
             setActiveTab={setActiveTab} 
             api={api} 

@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import AnalysisDetailModal from './AnalysisDetailModal';
+import AnalysisDetailModal from './AnalysisDetailModal'; // Relative import
 
 // Helper function to get badge color based on score
 const getMatchColor = (percentage) => {
@@ -109,7 +109,8 @@ const HistoryTab = ({ isActive, api, toast }) => {
                     <TableRow 
                         key={item.id} 
                         onClick={() => handleHistoryClick(item.id)}
-                        className="cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        // --- UPDATED: Added subtle transition classes ---
+                        className="cursor-pointer hover:bg-slate-100/50 transition-all duration-150 ease-in-out"
                     >
                       <TableCell className="font-medium text-xs">
                           {new Date(item.created_at).toLocaleDateString('en-US')}

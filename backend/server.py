@@ -6,8 +6,9 @@ import json
 import logging
 from datetime import datetime, timezone
 from typing import List, Dict, Any
+from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException
+from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import nltk
@@ -18,6 +19,11 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from app.db import get_db
 
+# --- NEW: Rate Limiting Imports ---
+import redis.asyncio as redis
+from fastapi_limiter import FastAPILimiter
+from fastapi_limiter.depends import RateLimiter
+
 try:
     nltk.data.find("tokenizers/punkt")
 except LookupError:
@@ -27,7 +33,33 @@ try:
 except LookupError:
     nltk.download("stopwords")
 
-app = FastAPI(title="AI Resume & Job Matcher API")
+# --- NEW: Rate Limiter Lifespan Event ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Initializes the rate limiter on app startup.
+    Connects to Redis if available, otherwise logs a warning.
+    """
+    redis_url = os.getenv("REDIS_URL", "redis://localhost")
+    try:
+        rd = redis.from_url(redis_url)
+        await rd.ping()
+        await FastAPILimiter.init(rd)
+        logging.info("FastAPILimiter initialized with Redis.")
+    except Exception as e:
+        logging.warning(f"Could not connect to Redis at {redis_url}. Reason: {e}")
+        logging.warning("Rate limiting will NOT be effective in a multi-worker production environment.")
+        # Fallback to in-memory storage (only works for a single worker process)
+        from fastapi_limiter.core import RateLimiterMemoryStorage
+        await FastAPILimiter.init(RateLimiterMemoryStorage())
+    
+    yield
+    
+    # Clean up on shutdown
+    await FastAPILimiter.close()
+
+
+app = FastAPI(title="AI Resume & Job Matcher API", lifespan=lifespan) # <-- UPDATED: Added lifespan
 api = APIRouter(prefix="/api")
 
 DEFAULT_ORIGINS = [
@@ -87,7 +119,6 @@ class AnalysisResponse(BaseModel):
     quantification_feedback: List[str]
     created_at: datetime
 
-# --- NEW: Models for AI Summary Generator ---
 class SummaryRequest(BaseModel):
     resume_text: str
 
@@ -289,7 +320,8 @@ async def upload_resume(file: UploadFile = File(...)):
 
     return {"text": text, "filename": file.filename}
 
-@api.post("/analyze", response_model=AnalysisResponse)
+# --- UPDATED: Added Rate Limiting Dependency ---
+@api.post("/analyze", response_model=AnalysisResponse, dependencies=[Depends(RateLimiter(times=10, minutes=1))])
 async def analyze_resume_job_match(payload: AnalysisResultCreate):
     resume_text = preprocess_text(payload.resume_text)
     jd_text = preprocess_text(payload.job_description)
@@ -348,12 +380,12 @@ async def get_analysis_history():
         out.append(AnalysisResponse(**x))
     return out
 
-# --- NEW: Route to generate AI summaries ---
-@api.post("/generate-summary", response_model=SummaryResponse)
+# --- UPDATED: Added Rate Limiting Dependency ---
+@api.post("/generate-summary", response_model=SummaryResponse, dependencies=[Depends(RateLimiter(times=10, minutes=1))])
 async def generate_summary(payload: SummaryRequest):
     resume_text = preprocess_text(payload.resume_text)
     if not resume_text:
-        raise HTTPException(status_code=4Z00, detail="Resume text is required")
+        raise HTTPException(status_code=400, detail="Resume text is required") # <-- BUG FIX: Was 40Z00
 
     try:
         api_key = os.getenv("EMERGENT_LLM_KEY")
@@ -392,7 +424,7 @@ RESUME TEXT:
         ])
 
 
-@app.get("/health")
+@api.get("/health")
 async def health():
     try:
         db = get_db()

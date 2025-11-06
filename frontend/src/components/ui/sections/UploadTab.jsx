@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react"; // <-- UPDATED: Added useEffect
 import { Upload, FileText, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,17 +7,19 @@ import { Textarea } from "@/components/ui/textarea";
 /**
  * Component for the "Upload Resume" tab.
  * Manages file selection, drag-and-drop, and uploading.
- * @param {object} props - Component props.
- * @param {function} props.setResumeText - Sets the extracted resume text in App.js.
- * @param {function} props.setActiveTab - Changes the active tab in App.js.
- * @param {object} props.api - The configured Axios instance.
- * @param {function} props.toast - The toast notification function from useToast.
  */
-const UploadTab = ({ setResumeText, setActiveTab, api, toast }) => {
+const UploadTab = ({ resumeText, setResumeText, setActiveTab, api, toast }) => { // <-- UPDATED: Added resumeText prop
   const [selectedFile, setSelectedFile] = useState(null);
   const [loadingUpload, setLoadingUpload] = useState(false);
-  const [internalResumeText, setInternalResumeText] = useState("");
+  // --- UPDATED: Initialize with parent state ---
+  const [internalResumeText, setInternalResumeText] = useState(resumeText);
   const fileInputRef = useRef(null);
+
+  // --- NEW: Sync local state with parent state ---
+  // This fixes the bug where "New Analysis" wouldn't clear the paste box
+  useEffect(() => {
+    setInternalResumeText(resumeText);
+  }, [resumeText]);
 
   const onFileChange = (e) => {
     const file = e.target.files?.[0] || null;
@@ -56,7 +58,8 @@ const UploadTab = ({ setResumeText, setActiveTab, api, toast }) => {
         maxBodyLength: 25 * 1024 * 1024,
       });
       setResumeText(data?.text || ""); // Update parent state
-      setInternalResumeText(data?.text || ""); // Update internal state for preview
+      // setInternalResumeText(data?.text || ""); // No longer needed, useEffect handles this
+      setActiveTab("analyze"); // <-- UPDATED: Move to analyze tab immediately
     } catch (err) {
       console.error("Upload error", err?.response || err);
       toast({
@@ -71,7 +74,7 @@ const UploadTab = ({ setResumeText, setActiveTab, api, toast }) => {
   
   // Handles moving to the analyze tab from the "Paste" section
   const handleContinueFromPaste = () => {
-    setResumeText(internalResumeText);
+    setResumeText(internalResumeText); // Sync parent state
     setActiveTab("analyze");
   };
 
@@ -139,20 +142,8 @@ const UploadTab = ({ setResumeText, setActiveTab, api, toast }) => {
             </div>
           </div>
 
-          {internalResumeText && (
-            <div className="space-y-3">
-              <h4 className="font-semibold text-slate-900">Extracted Text Preview:</h4>
-              <div className="bg-slate-50 rounded-lg p-4 max-h-48 overflow-y-auto">
-                <p className="text-sm text-slate-700 whitespace-pre-wrap">
-                  {internalResumeText.substring(0, 500)}...
-                </p>
-              </div>
-              <Button onClick={() => setActiveTab("analyze")} className="w-full gap-2" size="lg">
-                Continue to Analysis
-                <Target className="w-4 h-4" />
-              </Button>
-            </div>
-          )}
+          {/* This preview section is now redundant, as we move to the Analyze tab automatically */}
+          {/* You can keep it if you remove setActiveTab("analyze") from handleFileUpload */}
 
           <div className="space-y-4">
             <div className="flex items-center gap-2">
