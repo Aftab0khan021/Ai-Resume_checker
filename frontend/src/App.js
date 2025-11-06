@@ -18,6 +18,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./com
 import { Textarea } from "./components/ui/textarea";
 import { Progress } from "./components/ui/progress";
 import { Badge } from "./components/ui/badge";
+import { Toaster } from "./components/ui/toaster"; // <-- NEW: Import Toaster
+import { toast, useToast } from "./hooks/use-toast"; // <-- NEW: Import toast hook
+import { Input } from "./components/ui/input"; // <-- ADDED: Assuming this is the path to your Input component
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL; // e.g. https://ai-resume-checker-f4xs.onrender.com
 const BACKEND_ROOT = BACKEND_URL 
@@ -51,11 +54,13 @@ function App() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [resumeText, setResumeText] = useState("");
   const [jobDescription, setJobDescription] = useState("");
+  const [targetJobTitle, setTargetJobTitle] = useState(""); // <-- NEW: State for Job Title
   const [analysis, setAnalysis] = useState(null);
   const [loadingAnalyze, setLoadingAnalyze] = useState(false);
   const [loadingUpload, setLoadingUpload] = useState(false);
   const [activeTab, setActiveTab] = useState("upload");
   const fileInputRef = useRef(null);
+  const { toast } = useToast(); // <-- NEW: Initialize toast
 
   // --- File selection (does NOT upload) ---
   const onFileChange = (e) => {
@@ -81,7 +86,12 @@ function App() {
   const handleFileUpload = async (e) => {
     e?.preventDefault?.(); // in case this is inside a <form>
     if (!selectedFile) {
-      alert("Please select a PDF/DOC/DOCX first.");
+      // Replaced alert() with toast()
+      toast({
+        variant: "destructive",
+        title: "Upload Error",
+        description: "Please select a PDF/DOC/DOCX file first.",
+      });
       return;
     }
     try {
@@ -100,7 +110,12 @@ function App() {
       setActiveTab("analyze");
     } catch (err) {
       console.error("Upload error", err?.response || err);
-      alert("Upload failed: " + (err?.response?.data?.detail || err.message));
+      // Replaced alert() with toast()
+      toast({
+        variant: "destructive",
+        title: "Upload Failed",
+        description: err?.response?.data?.detail || err.message,
+      });
     } finally {
       setLoadingUpload(false);
     }
@@ -110,11 +125,21 @@ function App() {
   const handleAnalysis = async (e) => {
     e?.preventDefault?.();
     if (!resumeText?.trim()) {
-      alert("Resume text is empty. Upload a file or paste text.");
+      // Replaced alert() with toast()
+      toast({
+        variant: "destructive",
+        title: "Analysis Error",
+        description: "Resume text is empty. Upload a file or paste text.",
+      });
       return;
     }
     if (!jobDescription?.trim()) {
-      alert("Please paste a job description.");
+      // Replaced alert() with toast()
+      toast({
+        variant: "destructive",
+        title: "Analysis Error",
+        description: "Please paste a job description.",
+      });
       return;
     }
 
@@ -123,12 +148,18 @@ function App() {
       const { data } = await api.post("/analyze", {
         resume_text: resumeText,
         job_description: jobDescription,
+        target_job_title: targetJobTitle, // <-- NEW: Pass job title
       });
       setAnalysis(data);
       setActiveTab("results");
     } catch (err) {
       console.error("Analyze error", err?.response || err);
-      alert("Analyze failed: " + (err?.response?.data?.detail || err.message));
+      // Replaced alert() with toast()
+      toast({
+        variant: "destructive",
+        title: "Analysis Failed",
+        description: err?.response?.data?.detail || err.message,
+      });
     } finally {
       setLoadingAnalyze(false);
     }
@@ -351,7 +382,14 @@ function App() {
               </CardContent>
             </Card>
 
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 space-y-4"> {/* <-- ADDED space-y-4 */}
+              {/* NEW: Input for Target Job Title */}
+              <Input
+                  value={targetJobTitle}
+                  onChange={(e) => setTargetJobTitle(e.target.value)}
+                  placeholder="Enter Target Job Title (e.g., Senior Backend Developer)"
+                  className="text-lg"
+              />
               <Button
                 type="button"
                 onClick={handleAnalysis}
@@ -395,6 +433,27 @@ function App() {
                     </Badge>
                     <Progress value={analysis.match_percentage} className="w-full h-4 bg-slate-200" />
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* NEW: ATS Compatibility Score Card */}
+            <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="w-5 h-5 text-indigo-600" />
+                  ATS Compatibility Score
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="text-4xl font-bold text-indigo-600">
+                    {Math.round(analysis.ats_compatibility_score)}%
+                  </div>
+                  <Progress value={analysis.ats_compatibility_score} className="w-full h-3 bg-slate-200" />
+                  <p className="text-sm text-slate-600">
+                    This score estimates how well an Applicant Tracking System (ATS) can parse your resume.
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -457,7 +516,7 @@ function App() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Lightbulb className="w-5 h-5 text-amber-600" />
-                  Improvement Recommendations
+                  General Improvement Recommendations
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -474,6 +533,27 @@ function App() {
               </CardContent>
             </Card>
 
+            {/* NEW: Quantification Feedback Card */}
+            {analysis.quantification_feedback?.length > 0 && (
+                <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-red-700">
+                            <XCircle className="w-5 h-5" />
+                            Quantifiable Achievement Feedback
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-3">
+                            {analysis.quantification_feedback.map((feedback, index) => (
+                                <div key={index} className="flex gap-3 p-3 bg-red-50 rounded-lg border border-red-200">
+                                    <p className="text-slate-700">{feedback}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-4 justify-center">
               <Button
@@ -482,6 +562,7 @@ function App() {
                   setSelectedFile(null);
                   setResumeText("");
                   setJobDescription("");
+                  setTargetJobTitle(""); // <-- ADDED
                   setAnalysis(null);
                 }}
                 variant="outline"
@@ -509,16 +590,17 @@ function App() {
           </div>
           <p className="text-slate-400">Powered by advanced AI to help you land your dream job</p>
           <div className="flex items-center justify-center gap-2 mt-4">
-  <img
-    src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4"
-    alt="Author Avatar"
-    className="w-5 h-5 rounded-full"
-  />
-  <p className="text-xs text-slate-400">Made By Aftab</p>
-</div>
+            <img
+              src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4"
+              alt="Author Avatar"
+              className="w-5 h-5 rounded-full"
+            />
+            <p className="text-xs text-slate-400">Made By Aftab</p>
+          </div>
 
         </div>
       </footer>
+      <Toaster /> {/* <-- RENDER TOASTER HERE */}
     </div>
   );
 }

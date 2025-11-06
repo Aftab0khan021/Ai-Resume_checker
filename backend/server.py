@@ -5,9 +5,7 @@ import uuid
 import json
 import logging
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import List, Dict, Any
-
 from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -17,7 +15,7 @@ import docx
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from app.db import get_db  # <- our fixed db helper
+from app.db import get_db
 
 try:
     nltk.data.find("tokenizers/punkt")
@@ -34,7 +32,7 @@ api = APIRouter(prefix="/api")
 DEFAULT_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173",
-    "https://app-git-main-aftab-pathans-projects-9c06d6e7.vercel.app",  # ✅ your deployed Vercel frontend
+    "https://app-git-main-aftab-pathans-projects-9c06d6e7.vercel.app",
 ]
 
 # Optionally allow comma-separated extra origins via env (e.g. preview URLs)
@@ -47,7 +45,7 @@ app.add_middleware(
     allow_origin_regex=r"^https://app(?:-[a-z0-9]+)*-aftab-pathans-projects-9c06d6e7\.vercel\.app$",
     # Optional: also allow localhost for local dev
     allow_origins=DEFAULT_ORIGINS + ["http://127.0.0.1:3000"],
-    allow_credentials=True,          # keep True if you ever use cookies; otherwise False is also fine
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -63,12 +61,16 @@ class AnalysisResult(BaseModel):
     recommendations: List[str]
     resume_text: str
     job_description: str
+    target_job_title: str = Field(default="") # <-- ADDED
     analysis_summary: str
+    ats_compatibility_score: float = Field(..., description="ATS score from 0.0 to 100.0 based on formatting/structure.") # <-- ADDED
+    quantification_feedback: List[str] = Field(..., description="Specific recommendations on where to add metrics/numbers.") # <-- ADDED
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class AnalysisResultCreate(BaseModel):
     resume_text: str
     job_description: str
+    target_job_title: str = Field(default="") # <-- ADDED
 
 class AnalysisResponse(BaseModel):
     id: str
@@ -79,6 +81,9 @@ class AnalysisResponse(BaseModel):
     analysis_summary: str
     resume_text: str
     job_description: str
+    target_job_title: str # <-- ADDED
+    ats_compatibility_score: float # <-- ADDED
+    quantification_feedback: List[str] # <-- ADDED
 
 # ----------------------------
 # Utilities
@@ -130,7 +135,7 @@ def calculate_basic_similarity(resume_text: str, job_description: str) -> float:
         return 0.0
 
 # ---- Optional Gemini via emergentintegrations ----
-async def analyze_with_ai(resume_text: str, job_description: str) -> Dict[str, Any]:
+async def analyze_with_ai(resume_text: str, job_description: str, target_job_title: str) -> Dict[str, Any]: # <-- UPDATED SIGNATURE
     """
     If EMERGENT_LLM_KEY is present and emergentintegrations is installed, try AI;
     otherwise fall back to TF-IDF.
@@ -152,6 +157,8 @@ async def analyze_with_ai(resume_text: str, job_description: str) -> Dict[str, A
         prompt = f"""
 Analyze the following resume against the job description and provide a detailed assessment in JSON.
 
+TARGET JOB TITLE: {target_job_title}
+
 RESUME:
 {resume_text[:2000]}...
 
@@ -164,8 +171,19 @@ JSON FORMAT:
   "matched_skills": ["skill1", "skill2"],
   "missing_skills": ["skill1", "skill2"],
   "recommendations": ["rec1", "rec2"],
-  "analysis_summary": "2-3 sentence summary"
+  "analysis_summary": "2-3 sentence summary",
+  "ats_compatibility_score": <number 0-100>,
+  "quantification_feedback": ["feedback1", "feedback2"]
 }}
+
+Focus on:
+1. Technical skills alignment
+2. Experience relevance
+3. Educational background match
+4. Soft skills compatibility
+5. Industry experience
+6. **Evaluate resume formatting and layout for ATS compliance (return as ats_compatibility_score).**
+7. **Identify bullet points that lack quantifiable achievements and suggest improvements (return as quantification_feedback).**
 """
         response = await chat.send_message(UserMessage(text=prompt))
         text = str(response)
@@ -180,6 +198,8 @@ JSON FORMAT:
                 "missing_skills": list(payload.get("missing_skills", [])),
                 "recommendations": list(payload.get("recommendations", [])),
                 "analysis_summary": str(payload.get("analysis_summary", "AI analysis completed.")),
+                "ats_compatibility_score": float(payload.get("ats_compatibility_score", 0)), # <-- ADDED
+                "quantification_feedback": list(payload.get("quantification_feedback", [])), # <-- ADDED
             }
 
         # Fallback if parsing fails
@@ -198,6 +218,8 @@ JSON FORMAT:
                 "Include quantifiable achievements",
             ],
             "analysis_summary": f"Basic analysis completed with {score:.1f}% match score.",
+            "ats_compatibility_score": 70.0, # <-- ADDED fallback
+            "quantification_feedback": ["Consider adding metrics to 2-3 key accomplishments."], # <-- ADDED fallback
         }
 
 # ----------------------------
@@ -233,7 +255,7 @@ async def analyze_resume_job_match(payload: AnalysisResultCreate):
         raise HTTPException(status_code=400, detail="Both resume text and job description are required")
 
     # AI or basic similarity
-    result = await analyze_with_ai(resume_text, jd_text)
+    result = await analyze_with_ai(resume_text, jd_text, payload.target_job_title) # <-- UPDATED CALL
 
     doc = AnalysisResult(
         match_percentage=result["match_percentage"],
@@ -243,6 +265,9 @@ async def analyze_resume_job_match(payload: AnalysisResultCreate):
         analysis_summary=result["analysis_summary"],
         resume_text=payload.resume_text,
         job_description=payload.job_description,
+        target_job_title=payload.target_job_title, # <-- ADDED
+        ats_compatibility_score=result["ats_compatibility_score"], # <-- ADDED
+        quantification_feedback=result["quantification_feedback"], # <-- ADDED
     )
 
     # Save to Mongo
@@ -258,6 +283,8 @@ async def get_analysis_history():
     out: List[AnalysisResponse] = []
     for x in items or []:
         x.pop("_id", None)
+        # Note: You should update this part to only return a snippet of resume/JD
+        # if you decide to implement the data minimization change.
         out.append(AnalysisResponse(**x))
     return out
 
