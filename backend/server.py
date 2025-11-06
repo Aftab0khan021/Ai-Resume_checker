@@ -373,7 +373,6 @@ async def get_analysis_history():
         "job_description": 0
     }
     
-    # --- BUG FIX: Removed extra dot from db.analysis_results..find ---
     cursor = db.analysis_results.find({}, projection).sort("created_at", -1).limit(10)
     items = await cursor.to_list(length=None)
     
@@ -384,6 +383,7 @@ async def get_analysis_history():
         x.setdefault("job_description", "")
         x.setdefault("ats_compatibility_score", 0) 
         x.setdefault("quantification_feedback", [])
+        x.setdefault("target_job_title", "")  # <--- THIS IS THE FIX
         out.append(AnalysisResponse(**x))
     return out
 
