@@ -1,13 +1,12 @@
-import React from 'react';
-import { FileText, Target, Brain, Sparkles } from "lucide-react";
-import { Button } from "../button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../card"
-import { Textarea } from "../textarea"
-import { Input } from "../input"
-/**
- * Component for the "Analyze Match" tab.
- * Manages text inputs and triggers the analysis or summary generation.
- */
+import React from "react";
+import { Loader2 } from "lucide-react";
+// --- FIXED IMPORTS ---
+import { Button } from "../button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../card";
+import { Textarea } from "../textarea";
+import { Input } from "../input";
+// ---------------------
+
 const AnalyzeTab = ({
   resumeText,
   setResumeText,
@@ -21,85 +20,75 @@ const AnalyzeTab = ({
   loadingSummary,
 }) => {
   return (
-    <div className="grid md:grid-cols-2 gap-6">
-      <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
-        <CardHeader>
-          <div className="flex flex-wrap justify-between items-center gap-2">
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-indigo-600" />
-              Resume Content
-            </CardTitle>
+    <form onSubmit={handleAnalysis}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column: Resume */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Your Resume</CardTitle>
+            <CardDescription>
+              This text was extracted from your upload. You can edit it here.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Textarea
+              className="h-80 lg:h-96 font-mono text-xs"
+              value={resumeText}
+              onChange={(e) => setResumeText(e.target.value)}
+              placeholder="Paste your resume text here if you didn't upload a file."
+            />
             <Button
+              type="button"
               variant="outline"
-              size="sm"
               onClick={handleGenerateSummary}
-              disabled={loadingSummary || !resumeText}
-              className="gap-2"
+              disabled={loadingSummary || loadingAnalyze || !resumeText}
+              className="w-full"
             >
               {loadingSummary ? (
-                <div className="animate-spin w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full" />
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : (
-                <Sparkles className="w-4 h-4 text-indigo-600" />
+                "✨ Generate AI Summary"
               )}
-              Generate AI Summary
             </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            value={resumeText}
-            onChange={(e) => setResumeText(e.target.value)}
-            placeholder="Your resume text will appear here..."
-            className="min-h-60 sm:min-h-72 resize-y"
-          />
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="w-5 h-5 text-indigo-600" />
-            Job Description
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            value={jobDescription}
-            onChange={(e) => setJobDescription(e.target.value)}
-            placeholder="Paste the job description here..."
-            className="min-h-60 sm:min-h-72 resize-y"
-          />
-        </CardContent>
-      </Card>
-
-      <div className="lg:col-span-2 space-y-4">
-        <Input
-            value={targetJobTitle}
-            onChange={(e) => setTargetJobTitle(e.target.value)}
-            placeholder="Enter Target Job Title (e.g., Senior Backend Developer)"
-            className="text-lg"
-        />
-        <Button
-          type="button"
-          onClick={handleAnalysis}
-          disabled={loadingAnalyze || !resumeText || !jobDescription}
-          size="lg"
-          className="w-full gap-2 text-lg py-6"
-        >
-          {loadingAnalyze ? (
-            <>
-              <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />
-              Analyzing Match...
-            </>
-          ) : (
-            <>
-              <Brain className="w-5 h-5" />
-              Analyze Resume Match
-            </>
-          )}
-        </Button>
+        {/* Right Column: Job Description & Analysis */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Job Details</CardTitle>
+            <CardDescription>
+              Paste the target job title and job description below.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Input
+              value={targetJobTitle}
+              onChange={(e) => setTargetJobTitle(e.target.value)}
+              placeholder="Target Job Title (e.g., Senior Software Engineer)"
+              className="font-medium"
+            />
+            <Textarea
+              className="h-80 lg:h-96 font-mono text-xs"
+              value={jobDescription}
+              onChange={(e) => setJobDescription(e.target.value)}
+              placeholder="Paste the full job description here..."
+            />
+            <Button
+              type="submit"
+              disabled={loadingAnalyze || !resumeText || !jobDescription}
+              className="w-full"
+            >
+              {loadingAnalyze ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                "Analyze Resume Match"
+              )}
+            </Button>
+          </CardContent>
+        </Card>
       </div>
-    </div>
+    </form>
   );
 };
 

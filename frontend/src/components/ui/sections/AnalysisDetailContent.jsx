@@ -1,203 +1,150 @@
-import React from 'react';
-import {
-  TrendingUp,
-  CheckCircle,
-  XCircle,
-  Lightbulb,
-  Brain,
-  Target,
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "../card"
-import { Progress } from "../progress"
-import { Badge } from "../badge"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../accordion"
-import { ScrollArea } from "../scroll-area"
-// Helper function to get badge color based on score
-const getMatchColor = (percentage) => {
-  if (percentage >= 80) return "bg-emerald-500";
-  if (percentage >= 60) return "bg-amber-500";
-  return "bg-rose-500";
-};
+import React from "react";
+import { CheckCircle, XCircle, Info, Target, Star, FileText } from "lucide-react";
+// --- FIXED IMPORTS ---
+import { Card, CardContent, CardHeader, CardTitle } from "../card";
+import { Progress } from "../progress";
+import { Badge } from "../badge";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../accordion";
+import { ScrollArea } from "../scroll-area";
+// ---------------------
 
-// Helper function to get badge label based on score
-const getMatchLabel = (percentage) => {
-  if (percentage >= 80) return "Excellent Match";
-  if (percentage >= 60) return "Good Match";
-  return "Needs Improvement";
-};
-
-/**
- * A reusable component to render the full analysis detail.
- * Used by both the ResultsTab and the History Detail Modal.
- * @param {object} props - Component props.
- * @param {object} props.analysis - The analysis data object.
- */
 const AnalysisDetailContent = ({ analysis }) => {
   if (!analysis) return null;
 
+  const getMatchColor = (score) => {
+    if (score > 75) return "text-green-600";
+    if (score > 50) return "text-yellow-600";
+    return "text-red-600";
+  };
+
+  const getProgressColor = (score) => {
+    if (score > 75) return "bg-green-600";
+    if (score > 50) return "bg-yellow-500";
+    return "bg-red-600";
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Match Score Card */}
-      <Card className="border-0 shadow-xl bg-gradient-to-br from-white via-white to-indigo-50 backdrop-blur-sm">
-        <CardContent className="pt-6">
-          <div className="text-center space-y-4">
-            <div className="flex items-center justify-center gap-3">
-              <TrendingUp className="w-8 h-8 text-indigo-600" />
-              <h2 className="text-3xl font-bold text-slate-900">Match Score</h2>
-            </div>
-            <div className="space-y-3">
-              <div className="text-6xl font-bold text-indigo-600">
-                {Math.round(analysis.match_percentage)}%
-              </div>
-              <Badge className={`${getMatchColor(analysis.match_percentage)} text-white px-4 py-2 text-lg`}>
-                {getMatchLabel(analysis.match_percentage)}
-              </Badge>
-              <Progress value={analysis.match_percentage} className="w-full h-4 bg-slate-200" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ATS Compatibility Score Card */}
-      <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="w-5 h-5 text-indigo-600" />
-            ATS Compatibility Score
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <div className="text-4xl font-bold text-indigo-600">
-              {Math.round(analysis.ats_compatibility_score)}%
-            </div>
-            <Progress value={analysis.ats_compatibility_score} className="w-full h-3 bg-slate-200" />
-            <p className="text-sm text-slate-600">
-              This score estimates how well an Applicant Tracking System (ATS) can parse your resume.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Analysis Summary */}
-      <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Brain className="w-5 h-5 text-indigo-600" />
-            AI Analysis Summary
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-slate-700 leading-relaxed text-lg">{analysis.analysis_summary}</p>
-        </CardContent>
-      </Card>
-
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Matched Skills */}
-        <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      {/* Left Column (Main Scores) */}
+      <div className="xl:col-span-2 space-y-6">
+        {/* Match Score */}
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-emerald-700">
-              <CheckCircle className="w-5 h-5" />
-              Matched Skills ({analysis.matched_skills.length})
-            </CardTitle>
+            <CardTitle className="text-lg font-semibold text-slate-800">Overall Match Score</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {analysis.matched_skills.map((skill, index) => (
-                <Badge key={index} className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200">
-                  {skill}
-                </Badge>
-              ))}
+            <div className={`text-6xl font-bold ${getMatchColor(analysis.match_percentage)} mb-2`}>
+              {analysis.match_percentage.toFixed(0)}%
             </div>
+            <Progress value={analysis.match_percentage} className="w-full" indicatorClassName={getProgressColor(analysis.match_percentage)} />
+            <p className="text-slate-600 mt-4">{analysis.analysis_summary}</p>
           </CardContent>
         </Card>
 
-        {/* Missing Skills */}
-        <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
+        {/* ATS & Quantification */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader className="flex-row items-center gap-2 space-y-0">
+              <Target className="w-5 h-5 text-indigo-600" />
+              <CardTitle className="text-lg font-semibold text-slate-800">ATS Score</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={`text-5xl font-bold ${getMatchColor(analysis.ats_compatibility_score)}`}>
+                {analysis.ats_compatibility_score.toFixed(0)}
+              </div>
+              <p className="text-slate-600 mt-2">
+                A score above 80 is ideal for passing automated screening.
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex-row items-center gap-2 space-y-0">
+              <Star className="w-5 h-5 text-yellow-500" />
+              <CardTitle className="text-lg font-semibold text-slate-800">Quantification</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="list-disc list-inside space-y-2 text-slate-700">
+                {analysis.quantification_feedback.map((fb, i) => (
+                  <li key={i}>{fb}</li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Recommendations */}
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-rose-700">
-              <XCircle className="w-5 h-5" />
-              Missing Skills ({analysis.missing_skills.length})
-            </CardTitle>
+            <CardTitle className="text-lg font-semibold text-slate-800">AI Recommendations</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {analysis.missing_skills.map((skill, index) => (
-                <Badge key={index} className="bg-rose-100 text-rose-800 hover:bg-rose-200">
-                  {skill}
-                </Badge>
+            <ul className="list-disc list-inside space-y-2 text-slate-700">
+              {analysis.recommendations.map((rec, i) => (
+                <li key={i}>{rec}</li>
               ))}
-            </div>
+            </ul>
           </CardContent>
         </Card>
       </div>
 
-      {/* Recommendations */}
-      <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Lightbulb className="w-5 h-5 text-amber-600" />
-            General Improvement Recommendations
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {analysis.recommendations.map((recommendation, index) => (
-              <div key={index} className="flex gap-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
-                <div className="flex-shrink-0 mt-0.5">
-                  <div className="w-2 h-2 bg-amber-500 rounded-full" />
-                </div>
-                <p className="text-slate-700">{recommendation}</p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Right Column (Skills & Details) */}
+      <div className="space-y-6">
+        {/* Matched Skills */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-slate-800">Matched Skills</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {analysis.matched_skills.length > 0 ? (
+              analysis.matched_skills.map((skill, i) => (
+                <Badge key={i} variant="success">{skill}</Badge>
+              ))
+            ) : (
+              <p className="text-sm text-slate-500">No strong skill matches found.</p>
+            )}
+          </CardContent>
+        </Card>
 
-      {/* Quantification Feedback Card */}
-      {analysis.quantification_feedback?.length > 0 && (
-          <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
-              <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-red-700">
-                      <XCircle className="w-5 h-5" />
-                      Quantifiable Achievement Feedback
-                  </CardTitle>
-              </CardHeader>
-              <CardContent>
-                  <div className="space-y-3">
-                      {analysis.quantification_feedback.map((feedback, index) => (
-                          <div key={index} className="flex gap-3 p-3 bg-red-50 rounded-lg border border-red-200">
-                              <p className="text-slate-700">{feedback}</p>
-                          </div>
-                      ))}
-                  </div>
-              </CardContent>
-          </Card>
-      )}
-      
-      {/* STEP 2: View Original Text Accordion */}
-      <Accordion type="single" collapsible className="w-full">
-        <AccordionItem value="item-1">
-          <AccordionTrigger>View Original Resume Text</AccordionTrigger>
-          <AccordionContent>
-            <ScrollArea className="h-64 w-full rounded-md border p-4">
-              <pre className="text-sm text-slate-700 whitespace-pre-wrap font-sans">
-                {analysis.resume_text}
-              </pre>
-            </ScrollArea>
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem value="item-2">
-          <AccordionTrigger>View Original Job Description</AccordionTrigger>
-          <AccordionContent>
-            <ScrollArea className="h-64 w-full rounded-md border p-4">
-              <pre className="text-sm text-slate-700 whitespace-pre-wrap font-sans">
-                {analysis.job_description}
-              </pre>
-            </ScrollArea>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+        {/* Missing Skills */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-slate-800">Missing Keywords</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {analysis.missing_skills.length > 0 ? (
+              analysis.missing_skills.map((skill, i) => (
+                <Badge key={i} variant="destructive">{skill}</Badge>
+              ))
+            ) : (
+              <p className="text-sm text-slate-500">No critical missing keywords found.</p>
+            )}
+          </CardContent>
+        </Card>
+        
+        {/* Original Text Accordion */}
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="resume">
+            <AccordionTrigger>View Resume Text</AccordionTrigger>
+            <AccordionContent>
+              <ScrollArea className="h-64 p-4 border rounded-md bg-slate-50">
+                <pre className="text-xs text-slate-700 whitespace-pre-wrap font-mono">
+                  {analysis.resume_text}
+                </pre>
+              </ScrollArea>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="jd">
+            <AccordionTrigger>View Job Description Text</AccordionTrigger>
+            <AccordionContent>
+              <ScrollArea className="h-64 p-4 border rounded-md bg-slate-50">
+                <pre className="text-xs text-slate-700 whitespace-pre-wrap font-mono">
+                  {analysis.job_description}
+                </pre>
+              </ScrollArea>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </div>
     </div>
   );
 };

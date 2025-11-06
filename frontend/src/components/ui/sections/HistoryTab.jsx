@@ -1,145 +1,146 @@
-import React, { useState, useEffect } from 'react';
-import { Clock } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../table"
-import { Skeleton } from "../skeleton"
-import { Badge } from "../badge"
-import AnalysisDetailModal from './AnalysisDetailModal'; // Relative import
+import React, { useState, useEffect } from "react";
+import { format } from "date-fns";
+import { FileText, Loader2, ServerCrash } from "lucide-react";
+import AnalysisDetailModal from "./AnalysisDetailModal";
+// --- FIXED IMPORTS (and added CardDescription) ---
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../table";
+import { Skeleton } from "../skeleton";
+import { Badge } from "../badge";
+// --------------------------------------------------
 
-// Helper function to get badge color based on score
-const getMatchColor = (percentage) => {
-    if (percentage >= 80) return "bg-emerald-500";
-    if (percentage >= 60) return "bg-amber-500";
-    return "bg-rose-500";
-  };
-  
-/**
- * Component for the "History" tab.
- * Manages fetching history, displaying it in a table, and handling the detail modal.
- */
 const HistoryTab = ({ isActive, api, toast }) => {
   const [history, setHistory] = useState([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-  
-  // Modal State
-  const [selectedHistoryItem, setSelectedHistoryItem] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [loadingModal, setLoadingModal] = useState(false);
-  
-  // Fetch history when the tab becomes active
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedAnalysis, setSelectedAnalysis] = useState(null);
+
   useEffect(() => {
-    if (isActive) {
+    // Only fetch history if the tab is active and not already loaded
+    if (isActive && history.length === 0 && loading) {
+      const fetchHistory = async () => {
+        try {
+          setError(null);
+          const { data } = await api.get("/analysis-history");
+          setHistory(data || []);
+        } catch (err) {
+          console.error("History fetch error", err?.response || err);
+          setError(err?.response?.data?.detail || err.message);
+          toast({
+            variant: "destructive",
+            title: "Failed to load history",
+            description: err?.response?.data?.detail || err.message,
+          });
+        } finally {
+          setLoading(false);
+        }
+      };
       fetchHistory();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isActive]); // Dependency on isActive
+  }, [isActive, api, toast, history.length, loading]);
 
-  const fetchHistory = async () => {
-    setLoadingHistory(true);
-    try {
-      const { data } = await api.get("/analysis-history");
-      setHistory(data);
-    } catch (err) {
-      console.error("History fetch error", err?.response || err);
-      toast({
-        variant: "destructive",
-        title: "History Failed",
-        description: "Could not fetch analysis history: " + (err?.response?.data?.detail || err.message),
-      });
-    } finally {
-      setLoadingHistory(false);
-    }
+  const getMatchColor = (score) => {
+    if (score > 75) return "bg-green-100 text-green-800";
+    if (score > 50) return "bg-yellow-100 text-yellow-800";
+    return "bg-red-100 text-red-800";
+  };
+  
+  const getAtsColor = (score) => {
+    if (score > 80) return "text-green-600";
+    if (score > 60) return "text-yellow-600";
+    return "text-red-600";
   };
 
-  const handleHistoryClick = async (analysisId) => {
-    setLoadingModal(true);
-    setIsModalOpen(true);
-    setSelectedHistoryItem(null);
-    
-    try {
-      const { data } = await api.get(`/analysis/${analysisId}`);
-      setSelectedHistoryItem(data);
-    } catch (err) {
-      console.error("Fetch analysis detail error", err?.response || err);
-      toast({
-        variant: "destructive",
-        title: "Load Failed",
-        description: "Could not load analysis details: " + (err?.response?.data?.detail || err.message),
-      });
-      setIsModalOpen(false);
-    } finally {
-      setLoadingModal(false);
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="space-y-2">
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full" />
+          ))}
+        </div>
+      );
     }
+
+    if (error) {
+      return (
+        <div className="flex flex-col items-center justify-center h-48 text-red-600">
+          <ServerCrash className="w-12 h-12 mb-2" />
+          <p className="font-semibold">Error loading history</p>
+          <p className="text-sm">{error}</p>
+        </div>
+      );
+    }
+
+    if (history.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center h-48 text-slate-500">
+          <FileText className="w-12 h-12 mb-2" />
+          <p className="font-semibold">No History Found</p>
+          <p className="text-sm">Your past analysis results will appear here.</p>
+        </div>
+      );
+    }
+
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Date</TableHead>
+            <TableHead>Job Title</TableHead>
+            <TableHead>Match %</TableHead>
+            <TableHead>ATS Score</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {history.map((item) => (
+            <TableRow 
+              key={item.id} 
+              onClick={() => setSelectedAnalysis(item.id)}
+              className="cursor-pointer hover:bg-slate-50"
+            >
+              <TableCell className="text-sm text-slate-600">
+                {format(new Date(item.created_at), "MMM d, yyyy")}
+              </TableCell>
+              <TableCell className="font-medium text-slate-900 max-w-xs truncate">
+                {item.target_job_title || "Untitled Analysis"}
+              </TableCell>
+              <TableCell>
+                <Badge className={getMatchColor(item.match_percentage)}>
+                  {item.match_percentage.toFixed(0)}%
+                </Badge>
+              </TableCell>
+              <TableCell className={`font-medium ${getAtsColor(item.ats_compatibility_score)}`}>
+                {item.ats_compatibility_score.toFixed(0)}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
   };
 
   return (
     <>
-      <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-2xl">
-            <Clock className="w-6 h-6 text-indigo-600" />
-            Analysis History (Last 10)
-          </CardTitle>
+          <CardTitle>Analysis History</CardTitle>
           <CardDescription>
-            Click a row to see the full analysis details.
+            View your 10 most recent analysis results. Click a row to see details.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {loadingHistory ? (
-            <div className="space-y-4">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-1/2" />
-            </div>
-          ) : history.length === 0 ? (
-            <p className="text-center text-slate-500 py-8">No analysis history found. Start by analyzing a match!</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[100px]">Date</TableHead>
-                    <TableHead className="w-[150px]">Target Role</TableHead>
-                    <TableHead>Summary</TableHead>
-                    <TableHead className="text-right">Match %</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {history.map((item) => (
-                    <TableRow 
-                        key={item.id} 
-                        onClick={() => handleHistoryClick(item.id)}
-                        // --- UPDATED: Added subtle transition classes ---
-                        className="cursor-pointer hover:bg-slate-100/50 transition-all duration-150 ease-in-out"
-                    >
-                      <TableCell className="font-medium text-xs">
-                          {new Date(item.created_at).toLocaleDateString('en-US')}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                          {item.target_job_title || "General Role"}
-                      </TableCell>
-                      <TableCell className="text-sm text-slate-600">
-                          {item.analysis_summary.substring(0, 70)}...
-                      </TableCell>
-                      <TableCell className="text-right">
-                          <Badge className={getMatchColor(item.match_percentage)}>
-                              {Math.round(item.match_percentage)}%
-                          </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+          {renderContent()}
         </CardContent>
       </Card>
-
+      
+      {/* Analysis Detail Modal */}
       <AnalysisDetailModal
-        isOpen={isModalOpen}
-        setIsOpen={setIsModalOpen}
-        isLoading={loadingModal}
-        itemData={selectedHistoryItem}
+        analysisId={selectedAnalysis}
+        isOpen={!!selectedAnalysis}
+        onClose={() => setSelectedAnalysis(null)}
+        api={api}
+        toast={toast}
       />
     </>
   );

@@ -1,35 +1,39 @@
-import React from 'react';
-import { Upload, Download } from "lucide-react";
-import { Button } from "../button"
-import AnalysisDetailContent from './AnalysisDetailContent';
+import React from "react";
+// --- FIXED IMPORTS ---
+import { Button } from "../button";
+// ---------------------
+import AnalysisDetailContent from "./AnalysisDetailContent"; // This was likely correct already
 
-/**
- * Component for the "View Results" tab.
- * Displays the analysis and action buttons.
- */
 const ResultsTab = ({ analysis, resetApp }) => {
-  if (!analysis) return null; // Should be handled by App.js (disabled tab)
+  if (!analysis) {
+    return (
+      <div className="text-center p-12 bg-white rounded-lg shadow-sm">
+        <h2 className="text-xl font-semibold text-slate-700">No Analysis Found</h2>
+        <p className="text-slate-500 mb-4">
+          Please upload a resume and job description to see your results.
+        </p>
+        <Button onClick={resetApp}>Start New Analysis</Button>
+      </div>
+    );
+  }
+
+  const handlePrint = () => {
+    window.print();
+  };
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap gap-4 items-center justify-between">
+        <h1 className="text-3xl font-bold text-slate-900">Analysis Results</h1>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handlePrint}>Export Results (PDF)</Button>
+          <Button onClick={resetApp}>Start New Analysis</Button>
+        </div>
+      </div>
+      
+      {/* Re-usable content component */}
       <AnalysisDetailContent analysis={analysis} />
       
-      {/* Action Buttons */}
-      <div className="flex flex-wrap gap-4 justify-center">
-        <Button
-          onClick={resetApp}
-          variant="outline"
-          size="lg"
-          className="gap-2 w-full sm:w-auto"
-        >
-          <Upload className="w-4 h-4" />
-          New Analysis
-        </Button>
-        <Button onClick={() => window.print()} size="lg" className="gap-2 w-full sm:w-auto">
-          <Download className="w-4 h-4" />
-          Export Results
-        </Button>
-      </div>
     </div>
   );
 };
