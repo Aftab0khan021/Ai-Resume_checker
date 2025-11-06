@@ -85,6 +85,14 @@ class AnalysisResponse(BaseModel):
     target_job_title: str
     ats_compatibility_score: float
     quantification_feedback: List[str]
+    created_at: datetime
+
+# --- NEW: Models for AI Summary Generator ---
+class SummaryRequest(BaseModel):
+    resume_text: str
+
+class SummaryResponse(BaseModel):
+    summaries: List[str]
 
 # ----------------------------
 # Utilities
@@ -136,43 +144,27 @@ def calculate_basic_similarity(resume_text: str, job_description: str) -> float:
         return 0.0
 
 def get_missing_skills_from_tfidf(resume_text: str, job_description: str) -> List[str]:
-    """
-    Identifies high-value keywords in the JD that are missing from the resume
-    using TF-IDF for a more intelligent fallback.
-    """
     try:
-        # Ensure texts are preprocessed for token matching
         processed_resume = preprocess_text(resume_text)
-        
-        # Use TfidfVectorizer on both documents (single words only for skills)
         v = TfidfVectorizer(stop_words="english", ngram_range=(1, 1))
-        # Note: We fit/transform the JD first to correctly analyze the JD's terms
         m = v.fit_transform([job_description, processed_resume])
         
-        # JD vector is at index 0, Resume vector at index 1
         jd_vector = m[0].toarray()[0]
         feature_names = np.array(v.get_feature_names_out())
-
-        # Find the indices sorted by highest JD TF-IDF score
-        # This prioritizes words most unique/important to the Job Description
         sorted_indices = jd_vector.argsort()[::-1]
         
         missing_skills = []
         resume_tokens = set(processed_resume.split())
         
-        # Check against a small set of predefined skills AND top JD keywords
         potential_skills = extract_skills_from_text(job_description) + [
             feature_names[i] for i in sorted_indices if jd_vector[i] > 0.1
         ]
         
-        # Filter and collect the top 5 missing unique terms
-        # Sort by the JD's keyword importance (TF-IDF score)
         jd_keyword_scores = {
             feature_names[i]: jd_vector[i]
             for i in range(len(feature_names))
         }
         
-        # Sort potential skills by their importance in the JD (highest score first)
         sorted_potential_skills = sorted(
             set(potential_skills), 
             key=lambda x: jd_keyword_scores.get(x, 0), 
@@ -185,7 +177,6 @@ def get_missing_skills_from_tfidf(resume_text: str, job_description: str) -> Lis
             if len(missing_skills) >= 5:
                 break
         
-        # Final fallback to general soft skills if no technical keywords are found
         return missing_skills or ["Communication", "Adaptability", "Problem Solving"] 
 
     except Exception as e:
@@ -195,16 +186,11 @@ def get_missing_skills_from_tfidf(resume_text: str, job_description: str) -> Lis
 
 # ---- Optional Gemini via emergentintegrations ----
 async def analyze_with_ai(resume_text: str, job_description: str, target_job_title: str) -> Dict[str, Any]:
-    """
-    If EMERGENT_LLM_KEY is present and emergentintegrations is installed, try AI;
-    otherwise fall back to TF-IDF.
-    """
     try:
         api_key = os.getenv("EMERGENT_LLM_KEY")
         if not api_key:
             raise RuntimeError("EMERGENT_LLM_KEY not configured")
 
-        # lazy import to avoid hard dependency
         from emergentintegrations.llm.chat import LlmChat, UserMessage
 
         chat = LlmChat(
@@ -217,10 +203,8 @@ async def analyze_with_ai(resume_text: str, job_description: str, target_job_tit
 Analyze the following resume against the job description and provide a detailed assessment in JSON.
 
 TARGET JOB TITLE: {target_job_title}
-
 RESUME:
 {resume_text[:2000]}...
-
 JOB DESCRIPTION:
 {job_description[:2000]}...
 
@@ -247,7 +231,6 @@ Focus on:
         response = await chat.send_message(UserMessage(text=prompt))
         text = str(response)
 
-        # Try to parse JSON payload from model
         s, e = text.find("{"), text.rfind("}") + 1
         if s != -1 and e != -1:
             payload = json.loads(text[s:e])
@@ -261,20 +244,16 @@ Focus on:
                 "quantification_feedback": list(payload.get("quantification_feedback", [])),
             }
 
-        # Fallback if parsing fails
         raise ValueError("AI JSON parsing failed")
 
     except Exception as e:
         logging.warning(f"AI analysis unavailable, using basic similarity. Reason: {e}")
         score = calculate_basic_similarity(resume_text, job_description)
-        
-        # --- UPDATED FALLBACK: Use intelligent keyword analysis ---
         missing_skills_list = get_missing_skills_from_tfidf(resume_text, job_description)
-
         return {
             "match_percentage": score,
             "matched_skills": extract_skills_from_text(resume_text)[:5],
-            "missing_skills": missing_skills_list, # <-- NOW USES TF-IDF ANALYSIS
+            "missing_skills": missing_skills_list,
             "recommendations": [
                 "Highlight relevant experience more prominently",
                 "Add specific technical certifications",
@@ -317,7 +296,6 @@ async def analyze_resume_job_match(payload: AnalysisResultCreate):
     if not resume_text or not jd_text:
         raise HTTPException(status_code=400, detail="Both resume text and job description are required")
 
-    # AI or basic similarity
     result = await analyze_with_ai(resume_text, jd_text, payload.target_job_title)
 
     doc = AnalysisResult(
@@ -333,21 +311,86 @@ async def analyze_resume_job_match(payload: AnalysisResultCreate):
         quantification_feedback=result["quantification_feedback"],
     )
 
-    # Save to Mongo
     db = get_db()
     await db.analysis_results.insert_one(doc.dict())
 
     return AnalysisResponse(**doc.dict())
 
+@api.get("/analysis/{analysis_id}", response_model=AnalysisResponse)
+async def get_analysis_detail(analysis_id: str):
+    db = get_db()
+    item = await db.analysis_results.find_one({"id": analysis_id})
+    
+    if not item:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+        
+    return AnalysisResponse(**item)
+
 @api.get("/analysis-history", response_model=List[AnalysisResponse])
 async def get_analysis_history():
     db = get_db()
-    items = await db.analysis_results.find().sort("created_at", -1).limit(10).to_list(length=None)
+    
+    projection = {
+        "resume_text": 0,
+        "job_description": 0
+    }
+    
+    cursor = db.analysis_results.find({}, projection).sort("created_at", -1).limit(10)
+    items = await cursor.to_list(length=None)
+    
     out: List[AnalysisResponse] = []
     for x in items or []:
         x.pop("_id", None)
+        x.setdefault("resume_text", "") 
+        x.setdefault("job_description", "")
+        x.setdefault("ats_compatibility_score", 0) 
+        x.setdefault("quantification_feedback", [])
         out.append(AnalysisResponse(**x))
     return out
+
+# --- NEW: Route to generate AI summaries ---
+@api.post("/generate-summary", response_model=SummaryResponse)
+async def generate_summary(payload: SummaryRequest):
+    resume_text = preprocess_text(payload.resume_text)
+    if not resume_text:
+        raise HTTPException(status_code=400, detail="Resume text is required")
+
+    try:
+        api_key = os.getenv("EMERGENT_LLM_KEY")
+        if not api_key:
+            raise RuntimeError("EMERGENT_LLM_KEY not configured")
+
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        chat = LlmChat(
+            api_key=api_key,
+            session_id=str(uuid.uuid4()),
+            system_message="You are an expert resume writer.",
+        ).with_model("gemini", "gemini-2.5-flash")
+
+        prompt = f"""
+Based on the following resume text, write 3 professional, high-impact summary statements for a job application.
+Return them as a JSON list in the format: {{"summaries": ["summary1", "summary2", "summary3"]}}
+
+RESUME TEXT:
+{resume_text[:2000]}...
+"""
+        response = await chat.send_message(UserMessage(text=prompt))
+        text = str(response)
+
+        s, e = text.find("{"), text.rfind("}") + 1
+        if s != -1 and e != -1:
+            payload = json.loads(text[s:e])
+            return SummaryResponse(summaries=payload.get("summaries", []))
+        
+        raise ValueError("AI JSON parsing for summary failed")
+        
+    except Exception as e:
+        logging.error(f"Summary generation failed: {e}")
+        # Fallback in case of error
+        return SummaryResponse(summaries=[
+            f"Error generating summaries: {str(e)}",
+        ])
+
 
 @app.get("/health")
 async def health():
