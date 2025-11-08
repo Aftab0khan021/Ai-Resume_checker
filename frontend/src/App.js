@@ -35,8 +35,8 @@ import HistoryTab from "./components/ui/sections/HistoryTab";
 
 const api = axios.create({
   // --- FIX 2: Use relative path for Vercel proxy ---
-  baseURL: "/api",
-  timeout: 20000, // Increased timeout for analysis
+  baseURL: "https://ai-resume-checker-backend.onrender.com/api",
+  timeout: 60000, // Increased timeout for analysis
 });
 
 api.interceptors.response.use(
