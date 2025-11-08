@@ -31,6 +31,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("resume-matcher")
 
+# Ensure required nltk resources are present (download if missing)
 try:
     nltk.data.find("tokenizers/punkt")
 except LookupError:
@@ -48,11 +49,16 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["1000/hour"])
 async def lifespan(app: FastAPI):
     global db
     try:
-        client = AsyncIOMotorClient(os.getenv("MONGO_URL"))
-        db = client[os.getenv("DB_NAME", "resume_matcher_db")]
-        # Ping to test connectivity
-        await client.admin.command('ping')
-        logger.info("Successfully connected to MongoDB (during startup).")
+        mongo_url = os.getenv("MONGO_URL")
+        if mongo_url:
+            client = AsyncIOMotorClient(mongo_url)
+            db = client[os.getenv("DB_NAME", "resume_matcher_db")]
+            # Ping to test connectivity
+            await client.admin.command('ping')
+            logger.info("Successfully connected to MongoDB (during startup).")
+        else:
+            logger.warning("MONGO_URL not set; running without DB persistence.")
+            db = None
     except Exception as e:
         logger.warning(f"Warning: Error connecting to MongoDB at startup: {e}")
         db = None
@@ -64,29 +70,33 @@ api = APIRouter(prefix="/api")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# ----------------------------
+# CORS: make explicit and permissive for vercel + localhost origins.
+# This avoids mixing allow_origins list with regex and causing subtle mismatches.
+# You can tighten this later to specific origins.
+# ----------------------------
 DEFAULT_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173",
-    "https://ai-resume-checker-six.vercel.app",
-    "https://ai-resume-checker-2003.vercel.app", 
-    "https://app-git-main-aftab-pathans-projects-9c06d6e7.vercel.app",
 ]
 
+# Add extra origins passed via env (comma separated)
 _extra = os.getenv("FRONTEND_ORIGINS", "").strip()
 if _extra:
     DEFAULT_ORIGINS += [o.strip() for o in _extra.split(",") if o.strip()]
 
+# Always allow all vercel.app subdomains by regex and local dev origins above.
+# Use allow_origin_regex to match any subdomain under vercel.app.
 app.add_middleware(
-  CORSMiddleware,
-  allow_origin_regex=r"^(https?:\/\/localhost(:\d+)?|https?:\/\/.*\.vercel\.app)$",
-  allow_origins=DEFAULT_ORIGINS,
-  allow_credentials=True,
-  allow_methods=["*"],
-  allow_headers=["*"],
+    CORSMiddleware,
+    allow_origins=DEFAULT_ORIGINS,                # explicit local dev origins
+    allow_origin_regex=r"^https?:\/\/.*\.vercel\.app$",  # allow vercel subdomains
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-
-# ---------- Models (unchanged) ----------
+# ---------- Models ----------
 class AnalysisResult(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     match_percentage: float
@@ -126,7 +136,7 @@ class SummaryRequest(BaseModel):
 class SummaryResponse(BaseModel):
     summaries: List[str]
 
-# ---------- Utilities (unchanged except extra defensive fallbacks) ----------
+# ---------- Utilities ----------
 def extract_text_from_pdf(file_content: bytes) -> str:
     try:
         reader = PyPDF2.PdfReader(io.BytesIO(file_content))
@@ -136,7 +146,6 @@ def extract_text_from_pdf(file_content: bytes) -> str:
             out.append(page_text)
         return "\n".join(out).strip()
     except Exception as e:
-        # bubble up so caller can try fallback decoding
         raise RuntimeError(f"PDF extraction error: {e}")
 
 def extract_text_from_docx(file_content: bytes) -> str:
@@ -215,7 +224,7 @@ def get_missing_skills_from_tfidf(resume_text: str, job_description: str) -> Lis
         logger.warning(f"TFIDF missing skills failed: {e}")
         return ["Communication", "Leadership", "Project Management"]
 
-# ---------- AI helper (unchanged) ----------
+# ---------- AI helper ----------
 async def analyze_with_ai(resume_text: str, job_description: str, target_job_title: str) -> Dict[str, Any]:
     try:
         api_key = os.getenv("EMERGENT_LLM_KEY")
@@ -292,10 +301,9 @@ JSON FORMAT:
 async def root():
     return {"message": "AI Resume & Job Matcher API"}
 
-# --------- FIXED Upload Handler: better logging + fallback decode ----------
+# --------- Upload Handler: better logging + fallback decode ----------
 @api.post("/upload-resume", response_model=Dict[str, str])
 async def upload_resume(file: UploadFile = File(...)):
-    # Log metadata for debugging
     filename = file.filename or "unknown"
     content_type = file.content_type or "unknown"
     try:
@@ -307,7 +315,6 @@ async def upload_resume(file: UploadFile = File(...)):
     size = len(contents)
     logger.info(f"Upload received: filename={filename}, content_type={content_type}, size={size} bytes")
 
-    # guard: empty file
     if size == 0:
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
 
@@ -315,7 +322,7 @@ async def upload_resume(file: UploadFile = File(...)):
     text = ""
     errors = []
 
-    # Try PDF
+    # Try PDF extraction
     if lower_name.endswith(".pdf") or content_type == "application/pdf":
         try:
             text = extract_text_from_pdf(contents)
@@ -324,7 +331,7 @@ async def upload_resume(file: UploadFile = File(...)):
             logger.warning(f"PDF extraction failed: {e}")
             errors.append(f"PDF extraction failed: {e}")
 
-    # Try DOCX
+    # Try DOCX extraction
     if (not text) and (lower_name.endswith(".docx") or lower_name.endswith(".doc") or content_type in ("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword")):
         try:
             text = extract_text_from_docx(contents)
@@ -333,7 +340,7 @@ async def upload_resume(file: UploadFile = File(...)):
             logger.warning(f"DOCX extraction failed: {e}")
             errors.append(f"DOCX extraction failed: {e}")
 
-    # Fallback: try to decode raw bytes as utf-8 or latin-1 text (some copies/paste produce plain text disguised as .pdf)
+    # Fallback: try to decode raw bytes as utf-8 or latin-1 text
     if not text:
         try:
             decoded = contents.decode("utf-8", errors="ignore").strip()
@@ -341,7 +348,6 @@ async def upload_resume(file: UploadFile = File(...)):
                 text = decoded
                 logger.info(f"Fallback UTF-8 decode succeeded: {len(text)} chars")
             else:
-                # try latin1
                 decoded2 = contents.decode("latin-1", errors="ignore").strip()
                 if decoded2:
                     text = decoded2
@@ -350,17 +356,13 @@ async def upload_resume(file: UploadFile = File(...)):
             logger.warning(f"Fallback decoding error: {e}")
             errors.append(f"Fallback decode failed: {e}")
 
-    # If still no text, return informative error and server log entries
     if not text or not text.strip():
         err_detail = "; ".join(errors) if errors else "No text content detected in file."
         logger.error(f"Text extraction failed for {filename}: {err_detail}")
-        # Return 400 with detail so frontend toast shows a helpful message
         raise HTTPException(status_code=400, detail=f"Unable to extract text: {err_detail}")
 
-    # success
     return {"text": text, "filename": filename}
 
-# analysis route (unchanged)
 @api.post("/analyze", response_model=AnalysisResponse, dependencies=[Depends(limiter.limit("10/minute"))])
 async def analyze_resume_job_match(request: Request, payload: AnalysisResultCreate):
     resume_text = preprocess_text(payload.resume_text)
@@ -384,21 +386,31 @@ async def analyze_resume_job_match(request: Request, payload: AnalysisResultCrea
     )
 
     db = get_db()
-    await db.analysis_results.insert_one(doc.dict())
+    # Only insert if db is configured
+    try:
+        if db:
+            await db.analysis_results.insert_one(doc.dict())
+    except Exception as e:
+        logger.warning(f"Failed to persist analysis result to DB: {e}")
 
     return AnalysisResponse(**doc.dict())
 
 @api.get("/analysis/{analysis_id}", response_model=AnalysisResponse)
 async def get_analysis_detail(analysis_id: str):
     db = get_db()
+    if not db:
+        raise HTTPException(status_code=500, detail="Database not available")
     item = await db.analysis_results.find_one({"id": analysis_id})
     if not item:
         raise HTTPException(status_code=404, detail="Analysis not found")
+    item.pop("_id", None)
     return AnalysisResponse(**item)
 
 @api.get("/analysis-history", response_model=List[AnalysisResponse])
 async def get_analysis_history():
     db = get_db()
+    if not db:
+        return []
     projection = {"resume_text": 0, "job_description": 0}
     cursor = db.analysis_results.find({}, projection).sort("created_at", -1).limit(10)
     items = await cursor.to_list(length=None)
@@ -433,7 +445,7 @@ async def generate_summary(request: Request, payload: SummaryRequest):
 
         prompt = f"""
 Based on the following resume text, write 3 professional, high-impact summary statements for a job application.
-Return them as a JSON list in the format: {{"summaries": ["summary1", "summary2", "summary3"]}}
+Return them as a JSON list in the format: {{ "summaries": ["summary1", "summary2", "summary3"] }}
 
 RESUME TEXT:
 {resume_text[:2000]}...
@@ -453,7 +465,8 @@ RESUME TEXT:
 async def health():
     try:
         db = get_db()
-        await db.command("ping")
+        if db:
+            await db.command("ping")
         return {"status": "ok"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
