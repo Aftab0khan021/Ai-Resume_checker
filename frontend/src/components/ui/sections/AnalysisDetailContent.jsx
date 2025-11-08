@@ -1,21 +1,23 @@
 // AnalysisDetailContent.jsx
 import React from "react";
 import { Target, Star } from "lucide-react";
-// UI components (adjust import paths if your project structure differs)
-import { Card, CardContent, CardHeader, CardTitle } from "../card";
-import { Progress } from "../progress";
-import { Badge } from "../badge";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../accordion";
-import { ScrollArea } from "../scroll-area";
+
+// Use the same local imports your project expects (adjust if your file layout differs)
+import { Card, CardContent, CardHeader, CardTitle } from "./card";
+import { Progress } from "./progress";
+import { Badge } from "./badge";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./accordion";
+import { ScrollArea } from "./scroll-area";
 
 /**
  * Defensive AnalysisDetailContent
+ *
  * - Guards against missing/invalid fields coming from the server.
  * - Uses safe defaults for numbers and arrays.
  * - Avoids calling methods on undefined values (toFixed, map, etc.)
  */
-
 const AnalysisDetailContent = ({ analysis }) => {
+  // If analysis is not provided, show a simple placeholder (don't crash)
   if (!analysis || typeof analysis !== "object") {
     return (
       <div className="p-6 bg-white rounded shadow-sm text-center">
@@ -24,7 +26,7 @@ const AnalysisDetailContent = ({ analysis }) => {
     );
   }
 
-  // Safe helpers: ensure we always have numbers and arrays
+  // Safe helpers
   const safeNumber = (val, fallback = 0) => {
     const n = Number(val);
     return Number.isFinite(n) ? n : fallback;
@@ -42,8 +44,9 @@ const AnalysisDetailContent = ({ analysis }) => {
   const quantificationFeedback = safeArray(analysis.quantification_feedback);
   const matchedSkills = safeArray(analysis.matched_skills);
   const missingSkills = safeArray(analysis.missing_skills);
-  const resumeText = analysis.resume_text || "";
-  const jobDescription = analysis.job_description || "";
+  const resumeText = (analysis.resume_text || "").toString();
+  const jobDescription = (analysis.job_description || "").toString();
+  const recommendations = safeArray(analysis.recommendations);
 
   const getMatchColor = (score) => {
     if (score > 75) return "text-green-600";
@@ -71,7 +74,6 @@ const AnalysisDetailContent = ({ analysis }) => {
               {matchPercentage.toFixed(0)}%
             </div>
 
-            {/* Progress component expects numeric value 0-100 */}
             <Progress
               value={matchPercentage}
               className="w-full"
@@ -126,9 +128,9 @@ const AnalysisDetailContent = ({ analysis }) => {
             <CardTitle className="text-lg font-semibold text-slate-800">AI Recommendations</CardTitle>
           </CardHeader>
           <CardContent>
-            {Array.isArray(analysis.recommendations) && analysis.recommendations.length > 0 ? (
+            {recommendations.length > 0 ? (
               <ul className="list-disc list-inside space-y-2 text-slate-700">
-                {analysis.recommendations.map((rec, i) => (
+                {recommendations.map((rec, i) => (
                   <li key={i}>{(rec || "").toString()}</li>
                 ))}
               </ul>
