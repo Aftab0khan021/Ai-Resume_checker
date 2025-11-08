@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import List, Dict, Any
 from contextlib import asynccontextmanager 
 
-from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import nltk
@@ -19,12 +19,17 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from app.db import get_db
 
-# --- NEW: Rate Limiting Imports using slowapi ---
+# Rate limiting imports
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-from starlette.requests import Request
-from motor.motor_asyncio import AsyncIOMotorClient # Ensure motor is imported
+from motor.motor_asyncio import AsyncIOMotorClient
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger("resume-matcher")
 
 try:
     nltk.data.find("tokenizers/punkt")
@@ -35,38 +40,29 @@ try:
 except LookupError:
     nltk.download("stopwords")
 
-# --- NEW: Setup slowapi Limiter ---
-# We use the 'get_remote_address' function to identify users by their IP
+# Rate limiter
 limiter = Limiter(key_func=get_remote_address, default_limits=["1000/hour"])
-# We will apply specific limits to routes using 'Depends'
 
-# --- NEW: Lifespan (just for MongoDB) ---
+# Lifespan for MongoDB connection attempt (non-fatal)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Connect to MongoDB
     global db
     try:
         client = AsyncIOMotorClient(os.getenv("MONGO_URL"))
         db = client[os.getenv("DB_NAME", "resume_matcher_db")]
-        # Ping the server
+        # Ping to test connectivity
         await client.admin.command('ping')
-        logging.info("Successfully connected to MongoDB!")
+        logger.info("Successfully connected to MongoDB (during startup).")
     except Exception as e:
-        logging.warning(f"Error connecting to MongoDB: {e}")
-        db = None # Handle connection failure gracefully
-    
+        logger.warning(f"Warning: Error connecting to MongoDB at startup: {e}")
+        db = None
     yield
-    
-    # No cleanup needed for slowapi
-
 
 app = FastAPI(title="AI Resume & Job Matcher API", lifespan=lifespan)
 api = APIRouter(prefix="/api")
 
-# --- NEW: Add slowapi state and exception handler ---
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
 
 DEFAULT_ORIGINS = [
     "http://localhost:3000",
@@ -76,23 +72,20 @@ DEFAULT_ORIGINS = [
     "https://app-git-main-aftab-pathans-projects-9c06d6e7.vercel.app",
 ]
 
-# Optionally allow comma-separated extra origins via env (e.g. preview URLs)
 _extra = os.getenv("FRONTEND_ORIGINS", "").strip()
 if _extra:
     DEFAULT_ORIGINS += [o.strip() for o in _extra.split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"^(https?:\/\/localhost(:\d+)?|https:\/\/ai-resume-checker-2003\.vercel\.app|https:\/\/app(?:-[a-z0-9]+)*-aftab-pathans-projects-9c06d6e7\.vercel\.app)$",
-    allow_origins=DEFAULT_ORIGINS, 
+    allow_origin_regex=r"^(https?:\/\/localhost(:\d+)?|https:\/\/ai-resume-checker-2003\.vercel\.app|https:\/\/app(?:-[a-z0-9]+)*-aftab-pathans-projects-9c06d6e7\.vercel\.app|https:\/\/ai-resume-checker-six\.vercel\.app)$",
+    allow_origins=DEFAULT_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ----------------------------
-# Models (No Change)
-# ----------------------------
+# ---------- Models (unchanged) ----------
 class AnalysisResult(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     match_percentage: float
@@ -132,25 +125,25 @@ class SummaryRequest(BaseModel):
 class SummaryResponse(BaseModel):
     summaries: List[str]
 
-# ----------------------------
-# Utilities (No Change)
-# ----------------------------
+# ---------- Utilities (unchanged except extra defensive fallbacks) ----------
 def extract_text_from_pdf(file_content: bytes) -> str:
     try:
         reader = PyPDF2.PdfReader(io.BytesIO(file_content))
         out = []
-        for page in reader.pages:
-            out.append(page.extract_text() or "")
+        for i, page in enumerate(reader.pages):
+            page_text = page.extract_text() or ""
+            out.append(page_text)
         return "\n".join(out).strip()
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error extracting PDF text: {e}")
+        # bubble up so caller can try fallback decoding
+        raise RuntimeError(f"PDF extraction error: {e}")
 
 def extract_text_from_docx(file_content: bytes) -> str:
     try:
         d = docx.Document(io.BytesIO(file_content))
         return "\n".join(p.text for p in d.paragraphs).strip()
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error extracting DOCX text: {e}")
+        raise RuntimeError(f"DOCX extraction error: {e}")
 
 def preprocess_text(text: str) -> str:
     text = re.sub(r"\s+", " ", text or "")
@@ -218,11 +211,10 @@ def get_missing_skills_from_tfidf(resume_text: str, job_description: str) -> Lis
         return missing_skills or ["Communication", "Adaptability", "Problem Solving"] 
 
     except Exception as e:
-        logging.warning(f"TFIDF missing skills failed: {e}")
+        logger.warning(f"TFIDF missing skills failed: {e}")
         return ["Communication", "Leadership", "Project Management"]
 
-
-# ---- AI Analysis (No Change) ----
+# ---------- AI helper (unchanged) ----------
 async def analyze_with_ai(resume_text: str, job_description: str, target_job_title: str) -> Dict[str, Any]:
     try:
         api_key = os.getenv("EMERGENT_LLM_KEY")
@@ -256,15 +248,6 @@ JSON FORMAT:
   "ats_compatibility_score": <number 0-100>,
   "quantification_feedback": ["feedback1", "feedback2"]
 }}
-
-Focus on:
-1. Technical skills alignment
-2. Experience relevance
-3. Educational background match
-4. Soft skills compatibility
-5. Industry experience
-6. **Evaluate resume formatting and layout for ATS compliance (return as ats_compatibility_score).**
-7. **Identify bullet points that lack quantifiable achievements and suggest improvements (return as quantification_feedback).**
 """
         response = await chat.send_message(UserMessage(text=prompt))
         text = str(response)
@@ -285,7 +268,7 @@ Focus on:
         raise ValueError("AI JSON parsing failed")
 
     except Exception as e:
-        logging.warning(f"AI analysis unavailable, using basic similarity. Reason: {e}")
+        logger.warning(f"AI analysis unavailable, using basic similarity. Reason: {e}")
         score = calculate_basic_similarity(resume_text, job_description)
         missing_skills_list = get_missing_skills_from_tfidf(resume_text, job_description)
         return {
@@ -302,32 +285,81 @@ Focus on:
             "quantification_feedback": ["Consider adding metrics to 2-3 key accomplishments."],
         }
 
-# ----------------------------
-# Routes
-# ----------------------------
+# ---------- Routes ----------
+
 @api.get("/")
 async def root():
     return {"message": "AI Resume & Job Matcher API"}
 
+# --------- FIXED Upload Handler: better logging + fallback decode ----------
 @api.post("/upload-resume", response_model=Dict[str, str])
 async def upload_resume(file: UploadFile = File(...)):
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="No file provided")
+    # Log metadata for debugging
+    filename = file.filename or "unknown"
+    content_type = file.content_type or "unknown"
+    try:
+        contents = await file.read()
+    except Exception as e:
+        logger.error(f"Failed to read uploaded file bytes: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to read uploaded file: {e}")
 
-    content = await file.read()
-    name = (file.filename or "").lower()
-    if name.endswith(".pdf"):
-        text = extract_text_from_pdf(content)
-    elif name.endswith((".docx", ".doc")):
-        text = extract_text_from_docx(content)
-    else:
-        raise HTTPException(status_code=400, detail="Unsupported file format. Upload PDF or DOCX.")
-    if not text.strip():
-        raise HTTPException(status_code=400, detail="No text found in the uploaded file")
+    size = len(contents)
+    logger.info(f"Upload received: filename={filename}, content_type={content_type}, size={size} bytes")
 
-    return {"text": text, "filename": file.filename}
+    # guard: empty file
+    if size == 0:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
 
-# --- UPDATED: Added Rate Limiting with slowapi ---
+    lower_name = (filename or "").lower()
+    text = ""
+    errors = []
+
+    # Try PDF
+    if lower_name.endswith(".pdf") or content_type == "application/pdf":
+        try:
+            text = extract_text_from_pdf(contents)
+            logger.info(f"PDF extraction success: {len(text)} chars")
+        except Exception as e:
+            logger.warning(f"PDF extraction failed: {e}")
+            errors.append(f"PDF extraction failed: {e}")
+
+    # Try DOCX
+    if (not text) and (lower_name.endswith(".docx") or lower_name.endswith(".doc") or content_type in ("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword")):
+        try:
+            text = extract_text_from_docx(contents)
+            logger.info(f"DOCX extraction success: {len(text)} chars")
+        except Exception as e:
+            logger.warning(f"DOCX extraction failed: {e}")
+            errors.append(f"DOCX extraction failed: {e}")
+
+    # Fallback: try to decode raw bytes as utf-8 or latin-1 text (some copies/paste produce plain text disguised as .pdf)
+    if not text:
+        try:
+            decoded = contents.decode("utf-8", errors="ignore").strip()
+            if decoded:
+                text = decoded
+                logger.info(f"Fallback UTF-8 decode succeeded: {len(text)} chars")
+            else:
+                # try latin1
+                decoded2 = contents.decode("latin-1", errors="ignore").strip()
+                if decoded2:
+                    text = decoded2
+                    logger.info(f"Fallback latin-1 decode succeeded: {len(text)} chars")
+        except Exception as e:
+            logger.warning(f"Fallback decoding error: {e}")
+            errors.append(f"Fallback decode failed: {e}")
+
+    # If still no text, return informative error and server log entries
+    if not text or not text.strip():
+        err_detail = "; ".join(errors) if errors else "No text content detected in file."
+        logger.error(f"Text extraction failed for {filename}: {err_detail}")
+        # Return 400 with detail so frontend toast shows a helpful message
+        raise HTTPException(status_code=400, detail=f"Unable to extract text: {err_detail}")
+
+    # success
+    return {"text": text, "filename": filename}
+
+# analysis route (unchanged)
 @api.post("/analyze", response_model=AnalysisResponse, dependencies=[Depends(limiter.limit("10/minute"))])
 async def analyze_resume_job_match(request: Request, payload: AnalysisResultCreate):
     resume_text = preprocess_text(payload.resume_text)
@@ -359,36 +391,27 @@ async def analyze_resume_job_match(request: Request, payload: AnalysisResultCrea
 async def get_analysis_detail(analysis_id: str):
     db = get_db()
     item = await db.analysis_results.find_one({"id": analysis_id})
-    
     if not item:
         raise HTTPException(status_code=404, detail="Analysis not found")
-        
     return AnalysisResponse(**item)
 
 @api.get("/analysis-history", response_model=List[AnalysisResponse])
 async def get_analysis_history():
     db = get_db()
-    
-    projection = {
-        "resume_text": 0,
-        "job_description": 0
-    }
-    
+    projection = {"resume_text": 0, "job_description": 0}
     cursor = db.analysis_results.find({}, projection).sort("created_at", -1).limit(10)
     items = await cursor.to_list(length=None)
-    
     out: List[AnalysisResponse] = []
     for x in items or []:
         x.pop("_id", None)
-        x.setdefault("resume_text", "") 
+        x.setdefault("resume_text", "")
         x.setdefault("job_description", "")
-        x.setdefault("ats_compatibility_score", 0) 
+        x.setdefault("ats_compatibility_score", 0)
         x.setdefault("quantification_feedback", [])
-        x.setdefault("target_job_title", "")  # <--- THIS IS THE FIX
+        x.setdefault("target_job_title", "")
         out.append(AnalysisResponse(**x))
     return out
 
-# --- UPDATED: Added Rate Limiting with slowapi ---
 @api.post("/generate-summary", response_model=SummaryResponse, dependencies=[Depends(limiter.limit("10/minute"))])
 async def generate_summary(request: Request, payload: SummaryRequest):
     resume_text = preprocess_text(payload.resume_text)
@@ -416,21 +439,14 @@ RESUME TEXT:
 """
         response = await chat.send_message(UserMessage(text=prompt))
         text = str(response)
-
         s, e = text.find("{"), text.rfind("}") + 1
         if s != -1 and e != -1:
             payload = json.loads(text[s:e])
             return SummaryResponse(summaries=payload.get("summaries", []))
-        
         raise ValueError("AI JSON parsing for summary failed")
-        
     except Exception as e:
-        logging.error(f"Summary generation failed: {e}")
-        # Fallback in case of error
-        return SummaryResponse(summaries=[
-            f"Error generating summaries: {str(e)}",
-        ])
-
+        logger.error(f"Summary generation failed: {e}")
+        return SummaryResponse(summaries=[f"Error generating summaries: {str(e)}"])
 
 @api.get("/health")
 async def health():
@@ -441,13 +457,5 @@ async def health():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# mount the /api router LAST so CORS is already in place
+# mount router
 app.include_router(api)
-
-# ----------------------------
-# Logging
-# ----------------------------
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger("resume-matcher")
