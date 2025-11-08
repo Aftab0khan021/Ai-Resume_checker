@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./App.css";
 import axios from "axios";
 import {
@@ -75,6 +75,57 @@ function App() {
     setAnalysis(null);
   };
 
+  // --- NEW: When user navigates to Analyze tab but a file is present and no text extracted,
+  // automatically upload the file and extract text. If extraction fails, return user to Upload.
+  useEffect(() => {
+    let cancelled = false;
+    const autoUploadIfNeeded = async () => {
+      if (activeTab !== "analyze") return;
+      // Only auto-upload if user uploaded a file and we don't already have text
+      if (!resumeFile || (resumeText && resumeText.trim())) return;
+
+      setLoadingAnalyze(true);
+      const formData = new FormData();
+      formData.append("file", resumeFile);
+
+      try {
+        const uploadRes = await api.post("/upload-resume", formData, { timeout: 60000 });
+        const extracted = uploadRes?.data?.text || "";
+        if (!extracted || !extracted.trim()) {
+          if (cancelled) return;
+          toast({
+            variant: "destructive",
+            title: "Text Extraction Failed",
+            description:
+              uploadRes?.data?.detail ||
+              "No text extracted from the uploaded file. Please try another file or paste text manually.",
+          });
+          setActiveTab("upload");
+          return;
+        }
+        if (cancelled) return;
+        setResumeText(extracted);
+      } catch (err) {
+        if (cancelled) return;
+        console.error("Auto-upload error:", err?.response || err);
+        toast({
+          variant: "destructive",
+          title: "Text Extraction Failed",
+          description:
+            err?.response?.data?.detail ||
+            err?.message ||
+            "Unable to extract text from resume. Try a different file (PDF/DOCX).",
+        });
+        setActiveTab("upload");
+      } finally {
+        if (!cancelled) setLoadingAnalyze(false);
+      }
+    };
+
+    autoUploadIfNeeded();
+    return () => { cancelled = true; };
+  }, [activeTab, resumeFile, resumeText, toast]);
+
   // Main analysis workflow: upload (if file) -> analyze (JSON)
   const handleAnalysis = async () => {
     try {
@@ -103,20 +154,15 @@ function App() {
 
       let finalResumeText = resumeText;
 
-      // If file uploaded, call upload-resume endpoint first
-      if (resumeFile) {
+      // If file uploaded but text still empty (safety - upload should have happened in useEffect),
+      // try to upload now (this is a fallback).
+      if (resumeFile && !finalResumeText.trim()) {
         const formData = new FormData();
         formData.append("file", resumeFile);
-
         try {
-          const uploadRes = await api.post("/upload-resume", formData, {
-            timeout: 60000,
-          });
-
-          // Validate response
+          const uploadRes = await api.post("/upload-resume", formData, { timeout: 60000 });
           finalResumeText = uploadRes?.data?.text || "";
           if (!finalResumeText || !finalResumeText.trim()) {
-            // Treat empty text as failure
             toast({
               variant: "destructive",
               title: "Text Extraction Failed",
@@ -124,12 +170,9 @@ function App() {
                 uploadRes?.data?.detail ||
                 "No text extracted from uploaded file. Please try a different file.",
             });
-            // Keep user on upload tab
             setActiveTab("upload");
             return;
           }
-
-          // Push extracted text into UI state
           setResumeText(finalResumeText);
         } catch (err) {
           console.error("Upload / text extraction error:", err?.response || err);
@@ -141,7 +184,6 @@ function App() {
               err?.message ||
               "Unable to extract text from resume. Try a different file (PDF/DOCX).",
           });
-          // Keep user on upload tab and stop flow
           setActiveTab("upload");
           return;
         }
