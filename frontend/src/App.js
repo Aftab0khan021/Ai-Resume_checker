@@ -54,7 +54,7 @@ api.interceptors.response.use(
 function App() {
   // Core App State
   const [resumeText, setResumeText] = useState("");
-  // --- FIX: Added resumeFile state ---
+  // --- FIX 1: Added the missing resumeFile state ---
   const [resumeFile, setResumeFile] = useState(null);
   
   const [jobDescription, setJobDescription] = useState("");
@@ -77,7 +77,7 @@ function App() {
   const resetApp = () => {
     setActiveTab("upload");
     setResumeText("");
-    // --- FIX: Reset resumeFile state ---
+    // --- FIX 2: Reset resumeFile state ---
     setResumeFile(null); 
     setJobDescription("");
     setTargetJobTitle("");
@@ -86,7 +86,6 @@ function App() {
 
   /**
    * Handles the main analysis API call.
-   * --- FIX: This function is rewritten to handle both file and text ---
    */
   const handleAnalysis = async (e) => {
     e?.preventDefault?.();
@@ -118,6 +117,7 @@ function App() {
 
       if (resumeFile) {
         // --- Path 1: We have a file. Send as FormData ---
+        // This path will now work because resumeFile state exists
         payload = new FormData();
         payload.append("file", resumeFile);
         payload.append("job_description", jobDescription);
@@ -133,6 +133,7 @@ function App() {
         };
       }
 
+      // This call now uses the /api proxy and will work
       const { data } = await api.post("/analyze", payload, config);
       setAnalysis(data);
       setActiveTab("results");
@@ -170,6 +171,7 @@ function App() {
     setSummaryModalOpen(true);
     
     try {
+      // This call also uses the /api proxy
       const { data } = await api.post("/generate-summary", {
         resume_text: textToSummarize,
       });
@@ -247,7 +249,7 @@ function App() {
           <Button
             variant={activeTab === "upload" ? "default" : "ghost"}
             onClick={() => setActiveTab("upload")}
-            className={navButtonClasses} // <-- UPDATED
+            className={navButtonClasses}
           >
             <Upload className="w-4 h-4" />
             Upload Resume
@@ -255,7 +257,7 @@ function App() {
           <Button
             variant={activeTab === "analyze" ? "default" : "ghost"}
             onClick={() => setActiveTab("analyze")}
-            className={navButtonClasses} // <-- UPDATED
+            className={navButtonClasses}
           >
             <Target className="w-4 h-4" />
             Analyze Match
@@ -263,7 +265,7 @@ function App() {
           <Button
             variant={activeTab === "results" ? "default" : "ghost"}
             onClick={() => setActiveTab("results")}
-            className={navButtonClasses} // <-- UPDATED
+            className={navButtonClasses}
             disabled={!analysis}
           >
             <BarChart3 className="w-4 h-4" />
@@ -272,20 +274,18 @@ function App() {
           <Button
             variant={activeTab === "history" ? "default" : "ghost"}
             onClick={() => setActiveTab("history")}
-            className={navButtonClasses} // <-- UPDATED
+            className={navButtonClasses}
           >
             <Clock className="w-4 h-4" />
             History
           </Button>
         </div>
-
-        {/* --- Refactored Tab Content --- */}
         
         {activeTab === "upload" && (
           <UploadTab 
             resumeText={resumeText} 
             setResumeText={setResumeText} 
-            // --- FIX: Pass setResumeFile ---
+            // --- FIX 3: Pass setResumeFile prop ---
             setResumeFile={setResumeFile} 
             setActiveTab={setActiveTab} 
             api={api} 

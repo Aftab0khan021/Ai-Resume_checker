@@ -88,7 +88,7 @@ const UploadTab = ({
     setLoadingUpload(true);
 
     // --- FIX: Set the main app's file state *before* the API call ---
-    // This function will no longer crash, because App.js is passing setResumeFile
+    // This will now work because App.js is passing setResumeFile
     setResumeFile(selectedFile);
 
     const formData = new FormData();
@@ -123,7 +123,7 @@ const UploadTab = ({
 
   const handleContinueFromPaste = () => {
     setResumeText(internalResumeText); // Set parent text state
-    // --- FIX: This will no longer crash ---
+    // --- FIX: This will now work ---
     setResumeFile(null); // Clear file state, since we're using text
     setActiveTab("analyze");
   };
@@ -169,7 +169,7 @@ const UploadTab = ({
                   <p className="font-medium text-slate-700 mb-1">
                     {isDragOver
                       ? "Drop your file here"
-                      : "Drag & drop your file here"}
+                      : "Drag & drop your file here"} {/* <-- FIX: Changed * to : */}
                   </p>
                   <p className="text-sm text-slate-500 mb-3">
                     or click to browse
