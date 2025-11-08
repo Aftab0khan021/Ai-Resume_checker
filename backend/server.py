@@ -77,13 +77,14 @@ if _extra:
     DEFAULT_ORIGINS += [o.strip() for o in _extra.split(",") if o.strip()]
 
 app.add_middleware(
-    CORSMiddleware,
-    allow_origin_regex=r"^(https?:\/\/localhost(:\d+)?|https:\/\/ai-resume-checker-2003\.vercel\.app|https:\/\/app(?:-[a-z0-9]+)*-aftab-pathans-projects-9c06d6e7\.vercel\.app|https:\/\/ai-resume-checker-six\.vercel\.app)$",
-    allow_origins=DEFAULT_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+  CORSMiddleware,
+  allow_origin_regex=r"^(https?:\/\/localhost(:\d+)?|https?:\/\/.*\.vercel\.app)$",
+  allow_origins=DEFAULT_ORIGINS,
+  allow_credentials=True,
+  allow_methods=["*"],
+  allow_headers=["*"],
 )
+
 
 # ---------- Models (unchanged) ----------
 class AnalysisResult(BaseModel):
