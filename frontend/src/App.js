@@ -33,7 +33,7 @@ import HistoryTab from "./components/ui/sections/HistoryTab";
 
 // --- Use your backend URL on Render (keep this correct) ---
 const api = axios.create({
-  baseURL: "https://ai-resume-checker-backend.onrender.com/api",
+  baseURL:  "https://ai-resume-checker-tu2a.onrender.com/api",
   timeout: 60000, // Increased timeout for analysis/upload
 });
 
