@@ -31,10 +31,10 @@ import AnalyzeTab from "./components/ui/sections/AnalyzeTab";
 import ResultsTab from "./components/ui/sections/ResultsTab";
 import HistoryTab from "./components/ui/sections/HistoryTab";
 
-// --- FIX: Removed all BACKEND_URL logic ---
+// --- FIX 2: Removed all BACKEND_URL logic ---
 
 const api = axios.create({
-  // --- FIX: Use relative path for Vercel proxy ---
+  // --- FIX 2: Use relative path for Vercel proxy ---
   baseURL: "/api",
   timeout: 20000, // Increased timeout for analysis
 });
@@ -77,7 +77,7 @@ function App() {
   const resetApp = () => {
     setActiveTab("upload");
     setResumeText("");
-    // --- FIX 2: Reset resumeFile state ---
+    // --- FIX 1: Reset resumeFile state ---
     setResumeFile(null); 
     setJobDescription("");
     setTargetJobTitle("");
@@ -86,6 +86,7 @@ function App() {
 
   /**
    * Handles the main analysis API call.
+   * --- FIX 1 & 2: Rewritten to handle both file/text and use proxy ---
    */
   const handleAnalysis = async (e) => {
     e?.preventDefault?.();
@@ -117,7 +118,6 @@ function App() {
 
       if (resumeFile) {
         // --- Path 1: We have a file. Send as FormData ---
-        // This path will now work because resumeFile state exists
         payload = new FormData();
         payload.append("file", resumeFile);
         payload.append("job_description", jobDescription);
@@ -154,7 +154,6 @@ function App() {
    * Handles the AI Summary Generation API call.
    */
   const handleGenerateSummary = async () => {
-    // --- FIX: Check for file *or* text ---
     const textToSummarize = resumeText || (analysis ? analysis.resume_text : "");
     
     if (!textToSummarize?.trim()) {
@@ -193,7 +192,6 @@ function App() {
    * Copies text to the clipboard (fallback for iframes).
    */
   const copyToClipboard = (text) => {
-    // Attempt modern copy first
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(text)
         .then(() => {
@@ -204,7 +202,6 @@ function App() {
           toast({ variant: "destructive", title: "Copy Failed", description: "Could not copy text." });
         });
     } else {
-      // Fallback for older browsers or non-secure contexts (like iFrames/Canvas)
       const ta = document.createElement("textarea");
       ta.value = text;
       ta.style.position = "fixed";
@@ -223,7 +220,6 @@ function App() {
     }
   };
   
-  // --- Animation classes for nav buttons ---
   const navButtonClasses = "w-full sm:flex-1 gap-2 transform transition-transform duration-150 active:scale-95";
 
   return (
@@ -285,7 +281,7 @@ function App() {
           <UploadTab 
             resumeText={resumeText} 
             setResumeText={setResumeText} 
-            // --- FIX 3: Pass setResumeFile prop ---
+            // --- FIX 1: Pass setResumeFile ---
             setResumeFile={setResumeFile} 
             setActiveTab={setActiveTab} 
             api={api} 
@@ -315,6 +311,7 @@ function App() {
           />
         )}
         
+        {/* --- FIX 3: Pass required props to HistoryTab --- */}
         {activeTab === "history" && (
           <HistoryTab 
             isActive={activeTab === "history"}
