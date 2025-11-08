@@ -31,12 +31,10 @@ import AnalyzeTab from "./components/ui/sections/AnalyzeTab";
 import ResultsTab from "./components/ui/sections/ResultsTab";
 import HistoryTab from "./components/ui/sections/HistoryTab";
 
-// --- FIX 2: Removed all BACKEND_URL logic ---
-
+// --- Use your backend URL on Render (keep this correct) ---
 const api = axios.create({
-  // --- FIX 2: Use relative path for Vercel proxy ---
   baseURL: "https://ai-resume-checker-backend.onrender.com/api",
-  timeout: 60000, // Increased timeout for analysis
+  timeout: 60000, // Increased timeout for analysis/upload
 });
 
 api.interceptors.response.use(
@@ -54,9 +52,7 @@ api.interceptors.response.use(
 function App() {
   // Core App State
   const [resumeText, setResumeText] = useState("");
-  // --- FIX 1: Added the missing resumeFile state ---
   const [resumeFile, setResumeFile] = useState(null);
-  
   const [jobDescription, setJobDescription] = useState("");
   const [targetJobTitle, setTargetJobTitle] = useState("");
   const [analysis, setAnalysis] = useState(null);
@@ -69,26 +65,18 @@ function App() {
   const [generatedSummaries, setGeneratedSummaries] = useState([]);
   const [loadingSummary, setLoadingSummary] = useState(false);
 
-  // --- Core Logic ---
-  
-  /**
-   * Resets the app to the initial upload state.
-   */
+  // Reset to initial
   const resetApp = () => {
     setActiveTab("upload");
     setResumeText("");
-    // --- FIX 1: Reset resumeFile state ---
-    setResumeFile(null); 
+    setResumeFile(null);
     setJobDescription("");
     setTargetJobTitle("");
     setAnalysis(null);
   };
 
-  /**
-   * Handles the main analysis API call.
-   * --- FIX 1 & 2: Rewritten to handle both file/text and use proxy ---
-   */
- const handleAnalysis = async () => {
+  // Main analysis workflow: upload (if file) -> analyze (JSON)
+  const handleAnalysis = async () => {
     try {
       if (!resumeFile && !resumeText?.trim()) {
         toast({
@@ -96,6 +84,8 @@ function App() {
           title: "Error",
           description: "Please upload or paste your resume first.",
         });
+        // Ensure user stays on upload tab
+        setActiveTab("upload");
         return;
       }
 
@@ -105,6 +95,7 @@ function App() {
           title: "Error",
           description: "Please enter the job description.",
         });
+        setActiveTab("analyze");
         return;
       }
 
@@ -112,49 +103,85 @@ function App() {
 
       let finalResumeText = resumeText;
 
-      // ✅ If a file was uploaded, first call upload-resume API
+      // If file uploaded, call upload-resume endpoint first
       if (resumeFile) {
         const formData = new FormData();
         formData.append("file", resumeFile);
-        const uploadRes = await api.post("/upload-resume", formData, {
-          timeout: 60000,
-        });
-        finalResumeText = uploadRes.data.text || "";
-        setResumeText(finalResumeText);
+
+        try {
+          const uploadRes = await api.post("/upload-resume", formData, {
+            timeout: 60000,
+          });
+
+          // Validate response
+          finalResumeText = uploadRes?.data?.text || "";
+          if (!finalResumeText || !finalResumeText.trim()) {
+            // Treat empty text as failure
+            toast({
+              variant: "destructive",
+              title: "Text Extraction Failed",
+              description:
+                uploadRes?.data?.detail ||
+                "No text extracted from uploaded file. Please try a different file.",
+            });
+            // Keep user on upload tab
+            setActiveTab("upload");
+            return;
+          }
+
+          // Push extracted text into UI state
+          setResumeText(finalResumeText);
+        } catch (err) {
+          console.error("Upload / text extraction error:", err?.response || err);
+          toast({
+            variant: "destructive",
+            title: "Text Extraction Failed",
+            description:
+              err?.response?.data?.detail ||
+              err?.message ||
+              "Unable to extract text from resume. Try a different file (PDF/DOCX).",
+          });
+          // Keep user on upload tab and stop flow
+          setActiveTab("upload");
+          return;
+        }
       }
 
-      // ✅ Then call analyze endpoint with JSON
-      const res = await api.post(
-        "/analyze",
-        {
-          resume_text: finalResumeText,
-          job_description: jobDescription,
-          target_job_title: targetJobTitle,
-        },
-        { timeout: 60000 }
-      );
+      // Now call analyze with JSON payload
+      try {
+        const res = await api.post(
+          "/analyze",
+          {
+            resume_text: finalResumeText,
+            job_description: jobDescription,
+            target_job_title: targetJobTitle,
+          },
+          { timeout: 60000 }
+        );
 
-      setAnalysis(res.data);
-      setActiveTab("results");
-    } catch (error) {
-      console.error("Analysis Error:", error);
-      toast({
-        variant: "destructive",
-        title: "Analysis Failed",
-        description:
-          error?.response?.data?.detail || "An unexpected error occurred.",
-      });
+        setAnalysis(res.data);
+        setActiveTab("results");
+      } catch (err) {
+        console.error("Analyze API error:", err?.response || err);
+        toast({
+          variant: "destructive",
+          title: "Analysis Failed",
+          description:
+            err?.response?.data?.detail ||
+            err?.message ||
+            "Analysis endpoint failed. Please try again.",
+        });
+        // stay on analyze tab so user can retry
+        setActiveTab("analyze");
+      }
     } finally {
       setLoadingAnalyze(false);
     }
   };
 
-  /**
-   * Handles the AI Summary Generation API call.
-   */
+  // AI Summary generation
   const handleGenerateSummary = async () => {
     const textToSummarize = resumeText || (analysis ? analysis.resume_text : "");
-    
     if (!textToSummarize?.trim()) {
       toast({
         variant: "destructive",
@@ -163,13 +190,12 @@ function App() {
       });
       return;
     }
-    
+
     setLoadingSummary(true);
     setGeneratedSummaries([]);
     setSummaryModalOpen(true);
-    
+
     try {
-      // This call also uses the /api proxy
       const { data } = await api.post("/generate-summary", {
         resume_text: textToSummarize,
       });
@@ -181,15 +207,13 @@ function App() {
         title: "Summary Failed",
         description: err?.response?.data?.detail || err.message,
       });
-      setSummaryModalOpen(false); // Close modal on error
+      setSummaryModalOpen(false);
     } finally {
       setLoadingSummary(false);
     }
   };
 
-  /**
-   * Copies text to the clipboard (fallback for iframes).
-   */
+  // Copy helper
   const copyToClipboard = (text) => {
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(text)
@@ -218,7 +242,7 @@ function App() {
       document.body.removeChild(ta);
     }
   };
-  
+
   const navButtonClasses = "w-full sm:flex-1 gap-2 transform transition-transform duration-150 active:scale-95";
 
   return (
@@ -275,19 +299,18 @@ function App() {
             History
           </Button>
         </div>
-        
+
         {activeTab === "upload" && (
-          <UploadTab 
-            resumeText={resumeText} 
-            setResumeText={setResumeText} 
-            // --- FIX 1: Pass setResumeFile ---
-            setResumeFile={setResumeFile} 
-            setActiveTab={setActiveTab} 
-            api={api} 
-            toast={toast} 
+          <UploadTab
+            resumeText={resumeText}
+            setResumeText={setResumeText}
+            setResumeFile={setResumeFile}
+            setActiveTab={setActiveTab}
+            api={api}
+            toast={toast}
           />
         )}
-        
+
         {activeTab === "analyze" && (
           <AnalyzeTab
             resumeText={resumeText}
@@ -304,15 +327,14 @@ function App() {
         )}
 
         {activeTab === "results" && (
-          <ResultsTab 
+          <ResultsTab
             analysis={analysis}
-            resetApp={resetApp} 
+            resetApp={resetApp}
           />
         )}
-        
-        {/* --- FIX 3: Pass required props to HistoryTab --- */}
+
         {activeTab === "history" && (
-          <HistoryTab 
+          <HistoryTab
             isActive={activeTab === "history"}
             api={api}
             toast={toast}
@@ -321,7 +343,7 @@ function App() {
 
       </main>
 
-      {/* --- AI Summary Modal --- */}
+      {/* AI Summary Modal */}
       <Dialog open={isSummaryModalOpen} onOpenChange={setSummaryModalOpen}>
         <DialogContent className="max-w-2xl h-[70vh]">
           <DialogHeader>
@@ -342,9 +364,9 @@ function App() {
                     <Card key={index} className="bg-slate-50">
                       <CardContent className="p-4 flex items-start gap-4">
                         <p className="text-sm text-slate-800 flex-1">{summary}</p>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => copyToClipboard(summary)}
                           className="text-slate-500 hover:text-indigo-600"
                         >
@@ -366,7 +388,6 @@ function App() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
 
       {/* Footer */}
       <footer className="bg-slate-900 text-white py-8 mt-16">
