@@ -71,8 +71,9 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 DEFAULT_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173",
-    "https.ai-resume-checker-2003.vercel.app", 
-    "https.app-git-main-aftab-pathans-projects-9c06d6e7.vercel.app",
+    "https://ai-resume-checker-six.vercel.app",
+    "https://ai-resume-checker-2003.vercel.app", 
+    "https://app-git-main-aftab-pathans-projects-9c06d6e7.vercel.app",
 ]
 
 # Optionally allow comma-separated extra origins via env (e.g. preview URLs)

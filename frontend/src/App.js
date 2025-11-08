@@ -88,62 +88,61 @@ function App() {
    * Handles the main analysis API call.
    * --- FIX 1 & 2: Rewritten to handle both file/text and use proxy ---
    */
-  const handleAnalysis = async (e) => {
-    e?.preventDefault?.();
-    
-    // Check if we have neither a file nor text
-    if (!resumeFile && !resumeText?.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Analysis Error",
-        description: "Please upload a resume or paste its text first.",
-      });
-      return;
-    }
-    
-    if (!jobDescription?.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Analysis Error",
-        description: "Please paste a job description.",
-      });
-      return;
-    }
-
-    setLoadingAnalyze(true);
-    
+ const handleAnalysis = async () => {
     try {
-      let payload;
-      let config = {};
-
-      if (resumeFile) {
-        // --- Path 1: We have a file. Send as FormData ---
-        payload = new FormData();
-        payload.append("file", resumeFile);
-        payload.append("job_description", jobDescription);
-        payload.append("target_job_title", targetJobTitle);
-        config = { headers: { "Content-Type": "multipart/form-data" } };
-      
-      } else {
-        // --- Path 2: No file. Send resume text as JSON ---
-        payload = {
-          resume_text: resumeText,
-          job_description: jobDescription,
-          target_job_title: targetJobTitle,
-        };
+      if (!resumeFile && !resumeText?.trim()) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Please upload or paste your resume first.",
+        });
+        return;
       }
 
-      // This call now uses the /api proxy and will work
-      const { data } = await api.post("/analyze", payload, config);
-      setAnalysis(data);
+      if (!jobDescription?.trim()) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Please enter the job description.",
+        });
+        return;
+      }
+
+      setLoadingAnalyze(true);
+
+      let finalResumeText = resumeText;
+
+      // ✅ If a file was uploaded, first call upload-resume API
+      if (resumeFile) {
+        const formData = new FormData();
+        formData.append("file", resumeFile);
+        const uploadRes = await api.post("/upload-resume", formData, {
+          timeout: 60000,
+        });
+        finalResumeText = uploadRes.data.text || "";
+        setResumeText(finalResumeText);
+      }
+
+      // ✅ Then call analyze endpoint with JSON
+      const res = await api.post(
+        "/analyze",
+        {
+          resume_text: finalResumeText,
+          job_description: jobDescription,
+          target_job_title: targetJobTitle,
+        },
+        { timeout: 60000 }
+      );
+
+      setAnalysis(res.data);
       setActiveTab("results");
-      
-    } catch (err) {
-      console.error("Analyze error", err?.response || err);
+    } catch (error) {
+      console.error("Analysis Error:", error);
       toast({
         variant: "destructive",
         title: "Analysis Failed",
-        description: err?.response?.data?.detail || err.message,
+        description:
+          error?.response?.data?.detail || "An unexpected error occurred.",
       });
     } finally {
       setLoadingAnalyze(false);
