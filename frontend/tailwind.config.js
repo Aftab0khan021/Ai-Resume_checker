@@ -111,8 +111,8 @@ module.exports = {
     'sm:w-auto','sm:flex-row','md:grid-cols-2','lg:col-span-2', 
 
     // --- NEW: Regex patterns to preserve responsive & utility families:
-    // All responsive prefixes (sm:, md:, lg:, xl:)
-    { pattern: /(sm:|md:|lg:|xl:).*/ },
+    // All responsive prefixes followed by class tokens
+    { pattern: /(sm:|md:|lg:|xl:)[\w:-]+/ },
     // Common utility families you use across the app
     { pattern: /^(flex|grid|col-span|row-span|items-|justify-|content-|place-)/ },
     { pattern: /^(w|h|min-w|min-h|max-w|max-h|p|px|py|m|mx|my|gap|space-[xy])-.*$/ },

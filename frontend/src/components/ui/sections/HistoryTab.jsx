@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { FileText, Loader2, ServerCrash } from "lucide-react";
+import { FileText, ServerCrash } from "lucide-react";
 import AnalysisDetailModal from "./AnalysisDetailModal";
 // --- FIXED IMPORTS (and added CardDescription) ---
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../card";

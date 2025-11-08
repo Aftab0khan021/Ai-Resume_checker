@@ -3,7 +3,7 @@ import { Loader2, ServerCrash } from "lucide-react";
 import AnalysisDetailContent from "./AnalysisDetailContent";
 // --- FIXED IMPORTS (and added DialogDescription) ---
 import { Button } from "../button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter, DialogClose } from "../dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "../dialog";
 import { ScrollArea } from "../scroll-area";
 // ---------------------------------------------------
 

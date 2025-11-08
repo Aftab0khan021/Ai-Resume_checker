@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { Toaster } from "./components/ui/toaster";
-import { toast, useToast } from "./hooks/use-toast";
+import { useToast } from "./hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +24,7 @@ import {
 } from "./components/ui/dialog";
 import { Card, CardContent } from "./components/ui/card";
 import { ScrollArea } from "./components/ui/scroll-area";
+
 
 // Import new section components from their correct new path
 import UploadTab from "./components/ui/sections/UploadTab";

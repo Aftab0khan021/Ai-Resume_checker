@@ -1,5 +1,5 @@
 import React from "react";
-import { CheckCircle, XCircle, Info, Target, Star, FileText } from "lucide-react";
+import { Target, Star } from "lucide-react";
 // --- FIXED IMPORTS ---
 import { Card, CardContent, CardHeader, CardTitle } from "../card";
 import { Progress } from "../progress";
