@@ -72,25 +72,20 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ----------------------------
 # CORS: make explicit and permissive for vercel + localhost origins.
-# This avoids mixing allow_origins list with regex and causing subtle mismatches.
-# You can tighten this later to specific origins.
 # ----------------------------
 DEFAULT_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:5173",
 ]
 
-# Add extra origins passed via env (comma separated)
 _extra = os.getenv("FRONTEND_ORIGINS", "").strip()
 if _extra:
     DEFAULT_ORIGINS += [o.strip() for o in _extra.split(",") if o.strip()]
 
-# Always allow all vercel.app subdomains by regex and local dev origins above.
-# Use allow_origin_regex to match any subdomain under vercel.app.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=DEFAULT_ORIGINS,                # explicit local dev origins
-    allow_origin_regex=r"^https?:\/\/.*\.vercel\.app$",  # allow vercel subdomains
+    allow_origins=DEFAULT_ORIGINS,
+    allow_origin_regex=r"^https?:\/\/.*\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -301,7 +296,7 @@ JSON FORMAT:
 async def root():
     return {"message": "AI Resume & Job Matcher API"}
 
-# --------- Upload Handler: better logging + fallback decode ----------
+# --------- Upload Handler ----------
 @api.post("/upload-resume", response_model=Dict[str, str])
 async def upload_resume(file: UploadFile = File(...)):
     filename = file.filename or "unknown"
@@ -363,14 +358,52 @@ async def upload_resume(file: UploadFile = File(...)):
 
     return {"text": text, "filename": filename}
 
-@api.post("/analyze", response_model=AnalysisResponse, dependencies=[Depends(limiter.limit("10/minute"))])
-async def analyze_resume_job_match(request: Request, payload: AnalysisResultCreate):
-    resume_text = preprocess_text(payload.resume_text)
-    jd_text = preprocess_text(payload.job_description)
-    if not resume_text or not jd_text:
-        raise HTTPException(status_code=400, detail="Both resume text and job description are required")
+# --------- Robust Analyze Handler (fixed) ----------
+@api.post("/analyze", dependencies=[Depends(limiter.limit("10/minute"))])
+async def analyze_resume_job_match(request: Request):
+    """
+    Defensive analyze endpoint:
+    - Reads raw JSON from body
+    - Logs body for debugging
+    - Performs manual validation and returns 400 with helpful messages on missing/invalid fields
+    - Calls analyze_with_ai (or fallback) and persists result (if DB available)
+    """
+    try:
+        body = await request.json()
+    except Exception as e:
+        logger.error(f"Analyze: failed to parse JSON body: {e}")
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
 
-    result = await analyze_with_ai(resume_text, jd_text, payload.target_job_title)
+    logger.info(f"Analyze request body keys: {list(body.keys())}")
+
+    # Validate fields
+    resume_text = body.get("resume_text")
+    job_description = body.get("job_description")
+    target_job_title = body.get("target_job_title", "") or ""
+
+    if resume_text is None:
+        logger.warning("Analyze: missing 'resume_text' in body")
+        raise HTTPException(status_code=400, detail="Missing field: resume_text")
+    if job_description is None:
+        logger.warning("Analyze: missing 'job_description' in body")
+        raise HTTPException(status_code=400, detail="Missing field: job_description")
+
+    if not isinstance(resume_text, str) or not resume_text.strip():
+        logger.warning("Analyze: resume_text must be a non-empty string")
+        raise HTTPException(status_code=400, detail="resume_text must be a non-empty string")
+    if not isinstance(job_description, str) or not job_description.strip():
+        logger.warning("Analyze: job_description must be a non-empty string")
+        raise HTTPException(status_code=400, detail="job_description must be a non-empty string")
+
+    # Preprocess
+    r_text = preprocess_text(resume_text)
+    jd_text = preprocess_text(job_description)
+
+    try:
+        result = await analyze_with_ai(r_text, jd_text, target_job_title)
+    except Exception as e:
+        logger.error(f"Analyze: AI analysis error: {e}")
+        raise HTTPException(status_code=500, detail="Internal analysis error")
 
     doc = AnalysisResult(
         match_percentage=result["match_percentage"],
@@ -378,20 +411,20 @@ async def analyze_resume_job_match(request: Request, payload: AnalysisResultCrea
         missing_skills=result["missing_skills"],
         recommendations=result["recommendations"],
         analysis_summary=result["analysis_summary"],
-        resume_text=payload.resume_text,
-        job_description=payload.job_description,
-        target_job_title=payload.target_job_title,
+        resume_text=resume_text,
+        job_description=job_description,
+        target_job_title=target_job_title,
         ats_compatibility_score=result["ats_compatibility_score"],
         quantification_feedback=result["quantification_feedback"],
     )
 
-    db = get_db()
-    # Only insert if db is configured
+    db_conn = get_db()
     try:
-        if db:
-            await db.analysis_results.insert_one(doc.dict())
+        if db_conn:
+            await db_conn.analysis_results.insert_one(doc.dict())
+            logger.info("Analyze: saved analysis result to DB")
     except Exception as e:
-        logger.warning(f"Failed to persist analysis result to DB: {e}")
+        logger.warning(f"Analyze: failed to persist analysis result: {e}")
 
     return AnalysisResponse(**doc.dict())
 
