@@ -18,29 +18,43 @@ const alertVariants = cva(
   }
 )
 
-const Alert = React.forwardRef(({ className, variant, ...props }, ref) => (
+// --- FIX 1: Added 'children' ---
+const Alert = React.forwardRef(({ className, variant, children, ...props }, ref) => (
   <div
     ref={ref}
     role="alert"
     className={cn(alertVariants({ variant }), className)}
-    {...props} />
+    {...props}
+  >
+    {children}
+  </div>
 ))
 Alert.displayName = "Alert"
 
-const AlertTitle = React.forwardRef(({ className, ...props }, ref) => (
+// --- FIX 2: This was the main build error. Added 'children' ---
+const AlertTitle = React.forwardRef(({ className, children, ...props }, ref) => (
   <h5
     ref={ref}
     className={cn("mb-1 font-medium leading-none tracking-tight", className)}
-    {...props} />
+    {...props}
+  >
+    {children}
+  </h5>
 ))
 AlertTitle.displayName = "AlertTitle"
 
-const AlertDescription = React.forwardRef(({ className, ...props }, ref) => (
+// --- FIX 3: Added 'children' ---
+const AlertDescription = React.forwardRef(({ className, children, ...props }, ref) => (
   <div
     ref={ref}
     className={cn("text-sm [&_p]:leading-relaxed", className)}
-    {...props} />
+    {...props}
+  >
+    {children}
+  </div>
 ))
 AlertDescription.displayName = "AlertDescription"
 
 export { Alert, AlertTitle, AlertDescription }
+
+// --- FIX 4: Removed the extra '}' that was here ---
