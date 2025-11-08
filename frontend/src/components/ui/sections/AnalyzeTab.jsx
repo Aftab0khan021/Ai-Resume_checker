@@ -75,7 +75,7 @@ const AnalyzeTab = ({
               placeholder="Paste the full job description here..."
             />
             <Button
-              type="button"
+              type="submit"
               disabled={loadingAnalyze || !resumeText || !jobDescription}
               className="w-full"
             >
