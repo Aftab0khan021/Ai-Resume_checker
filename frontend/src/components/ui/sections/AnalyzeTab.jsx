@@ -20,7 +20,7 @@ const AnalyzeTab = ({
   loadingSummary,
 }) => {
   return (
-    <form onSubmit={handleAnalysis}>
+   <form onSubmit={(e) => { e.preventDefault(); handleAnalysis(); }}>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Column: Resume */}
         <Card>
@@ -75,7 +75,7 @@ const AnalyzeTab = ({
               placeholder="Paste the full job description here..."
             />
             <Button
-              type="submit"
+              type="button"
               disabled={loadingAnalyze || !resumeText || !jobDescription}
               className="w-full"
             >
