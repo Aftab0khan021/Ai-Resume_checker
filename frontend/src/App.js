@@ -25,26 +25,20 @@ import {
 import { Card, CardContent } from "./components/ui/card";
 import { ScrollArea } from "./components/ui/scroll-area";
 
-
 // Import new section components from their correct new path
 import UploadTab from "./components/ui/sections/UploadTab";
 import AnalyzeTab from "./components/ui/sections/AnalyzeTab";
 import ResultsTab from "./components/ui/sections/ResultsTab";
 import HistoryTab from "./components/ui/sections/HistoryTab";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const BACKEND_ROOT = BACKEND_URL 
-  .replace(/\/+$/g, "")
-  .replace(/\/api$/i, "");
-
-if (!BACKEND_ROOT) {
-  console.error("REACT_APP_BACKEND_URL is missing. Set it to your backend root (no /api).");
-}
+// --- FIX: Removed all BACKEND_URL logic ---
 
 const api = axios.create({
-  baseURL: `${BACKEND_ROOT}/api`,
-  timeout: 20000,
+  // --- FIX: Use relative path for Vercel proxy ---
+  baseURL: "/api",
+  timeout: 20000, // Increased timeout for analysis
 });
+
 api.interceptors.response.use(
   (r) => r,
   async (error) => {
@@ -60,6 +54,9 @@ api.interceptors.response.use(
 function App() {
   // Core App State
   const [resumeText, setResumeText] = useState("");
+  // --- FIX: Added resumeFile state ---
+  const [resumeFile, setResumeFile] = useState(null);
+  
   const [jobDescription, setJobDescription] = useState("");
   const [targetJobTitle, setTargetJobTitle] = useState("");
   const [analysis, setAnalysis] = useState(null);
@@ -80,6 +77,8 @@ function App() {
   const resetApp = () => {
     setActiveTab("upload");
     setResumeText("");
+    // --- FIX: Reset resumeFile state ---
+    setResumeFile(null); 
     setJobDescription("");
     setTargetJobTitle("");
     setAnalysis(null);
@@ -87,17 +86,21 @@ function App() {
 
   /**
    * Handles the main analysis API call.
+   * --- FIX: This function is rewritten to handle both file and text ---
    */
   const handleAnalysis = async (e) => {
     e?.preventDefault?.();
-    if (!resumeText?.trim()) {
+    
+    // Check if we have neither a file nor text
+    if (!resumeFile && !resumeText?.trim()) {
       toast({
         variant: "destructive",
         title: "Analysis Error",
-        description: "Resume text is empty. Upload a file or paste text.",
+        description: "Please upload a resume or paste its text first.",
       });
       return;
     }
+    
     if (!jobDescription?.trim()) {
       toast({
         variant: "destructive",
@@ -107,15 +110,33 @@ function App() {
       return;
     }
 
+    setLoadingAnalyze(true);
+    
     try {
-      setLoadingAnalyze(true);
-      const { data } = await api.post("/analyze", {
-        resume_text: resumeText,
-        job_description: jobDescription,
-        target_job_title: targetJobTitle,
-      });
+      let payload;
+      let config = {};
+
+      if (resumeFile) {
+        // --- Path 1: We have a file. Send as FormData ---
+        payload = new FormData();
+        payload.append("file", resumeFile);
+        payload.append("job_description", jobDescription);
+        payload.append("target_job_title", targetJobTitle);
+        config = { headers: { "Content-Type": "multipart/form-data" } };
+      
+      } else {
+        // --- Path 2: No file. Send resume text as JSON ---
+        payload = {
+          resume_text: resumeText,
+          job_description: jobDescription,
+          target_job_title: targetJobTitle,
+        };
+      }
+
+      const { data } = await api.post("/analyze", payload, config);
       setAnalysis(data);
       setActiveTab("results");
+      
     } catch (err) {
       console.error("Analyze error", err?.response || err);
       toast({
@@ -132,7 +153,10 @@ function App() {
    * Handles the AI Summary Generation API call.
    */
   const handleGenerateSummary = async () => {
-    if (!resumeText?.trim()) {
+    // --- FIX: Check for file *or* text ---
+    const textToSummarize = resumeText || (analysis ? analysis.resume_text : "");
+    
+    if (!textToSummarize?.trim()) {
       toast({
         variant: "destructive",
         title: "Summary Error",
@@ -147,7 +171,7 @@ function App() {
     
     try {
       const { data } = await api.post("/generate-summary", {
-        resume_text: resumeText,
+        resume_text: textToSummarize,
       });
       setGeneratedSummaries(data.summaries || []);
     } catch (err) {
@@ -259,8 +283,10 @@ function App() {
         
         {activeTab === "upload" && (
           <UploadTab 
-            resumeText={resumeText} // <-- UPDATED: Pass resumeText prop
+            resumeText={resumeText} 
             setResumeText={setResumeText} 
+            // --- FIX: Pass setResumeFile ---
+            setResumeFile={setResumeFile} 
             setActiveTab={setActiveTab} 
             api={api} 
             toast={toast} 

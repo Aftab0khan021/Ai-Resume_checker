@@ -23,7 +23,7 @@ const UploadTab = ({
   setActiveTab,
   api,
   toast,
-  setResumeFile, // Make sure this is passed from App.js
+  setResumeFile, // This prop is CRITICAL and passed from the new App.js
 }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [loadingUpload, setLoadingUpload] = useState(false);
@@ -87,9 +87,8 @@ const UploadTab = ({
 
     setLoadingUpload(true);
 
-    // --- FIX 1: Set the main app's file state *before* the API call ---
-    // This ensures that even if the text extraction fails,
-    // the app still has the file for the *analysis* step.
+    // --- FIX: Set the main app's file state *before* the API call ---
+    // This function will no longer crash, because App.js is passing setResumeFile
     setResumeFile(selectedFile);
 
     const formData = new FormData();
@@ -104,7 +103,7 @@ const UploadTab = ({
         description: "Your resume text has been extracted.",
       });
     } catch (err) {
-      // --- FIX 2: Do NOT reset the file on error ---
+      // --- FIX: Do NOT reset the file on error ---
       // We still want to proceed to the analyze tab.
       // The backend /analyze endpoint will handle text extraction.
       console.error("Text extraction failed (will proceed anyway):", err?.response || err);
@@ -115,11 +114,8 @@ const UploadTab = ({
       });
       // Clear any old text, since extraction failed
       setResumeText("");
-      
-      // setResumeFile(null); // <-- THIS WAS THE BUG. IT IS REMOVED.
-      // setResumeText("");   // <-- THIS WAS ALSO BAD.
     } finally {
-      // --- FIX 3: Always move to the analyze tab ---
+      // --- FIX: Always move to the analyze tab ---
       setLoadingUpload(false);
       setActiveTab("analyze"); // Move to analyze tab regardless of extraction success
     }
@@ -127,6 +123,7 @@ const UploadTab = ({
 
   const handleContinueFromPaste = () => {
     setResumeText(internalResumeText); // Set parent text state
+    // --- FIX: This will no longer crash ---
     setResumeFile(null); // Clear file state, since we're using text
     setActiveTab("analyze");
   };
