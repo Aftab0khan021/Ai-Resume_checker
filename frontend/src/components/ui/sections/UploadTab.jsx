@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Upload, FileText, Target, Loader2, X } from "lucide-react";
-// --- FIXED IMPORTS ---
 import { Button } from "../button";
 import {
   Card,
@@ -10,8 +9,7 @@ import {
   CardTitle,
 } from "../card";
 import { Textarea } from "../textarea";
-import { Alert, AlertDescription } from "../alert"; // Added Alert for better file display
-// ---------------------\
+import { Alert, AlertDescription } from "../alert";
 
 /**
  * Component for the "Upload Resume" tab.
@@ -23,7 +21,7 @@ const UploadTab = ({
   setActiveTab,
   api,
   toast,
-  setResumeFile, // This prop is CRITICAL and passed from the new App.js
+  setResumeFile,
 }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [loadingUpload, setLoadingUpload] = useState(false);
@@ -63,7 +61,17 @@ const UploadTab = ({
   };
 
   const handleFileSelect = (file) => {
-    if (file && (file.type === "application/pdf" || file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document")) {
+    // Accept PDFs and DOCX (also allow .doc mime check as a fallback)
+    const okMime =
+      file &&
+      (file.type === "application/pdf" ||
+        file.type ===
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+        file.type === "application/msword" ||
+        file.name?.toLowerCase().endsWith(".pdf") ||
+        file.name?.toLowerCase().endsWith(".docx") ||
+        file.name?.toLowerCase().endsWith(".doc"));
+    if (file && okMime) {
       setSelectedFile(file);
     } else {
       toast({
@@ -87,43 +95,57 @@ const UploadTab = ({
 
     setLoadingUpload(true);
 
-    // --- FIX: Set the main app's file state *before* the API call ---
-    // This will now work because App.js is passing setResumeFile
+    // Set the main app's file state before the API call
     setResumeFile(selectedFile);
 
     const formData = new FormData();
     formData.append("file", selectedFile);
 
     try {
-      // This endpoint is just for pre-filling the text area in the Analyze tab
-      const { data } = await api.post("/upload", formData);
-      setResumeText(data.text || ""); // Set extracted text on success
+      // IMPORTANT: call the correct backend endpoint
+      const { data } = await api.post("/upload-resume", formData);
+      const extracted = data.text || "";
+
+      if (!extracted || !extracted.trim()) {
+        toast({
+          variant: "destructive",
+          title: "Text Extraction Failed",
+          description:
+            data.detail ||
+            "No text extracted from uploaded file. Try another file or paste text manually.",
+        });
+        // stay on upload tab so user can retry
+        return;
+      }
+
+      // Set extracted text and move to Analyze
+      setResumeText(extracted);
       toast({
         title: "Upload Successful",
         description: "Your resume text has been extracted.",
       });
+      setActiveTab("analyze");
     } catch (err) {
-      // --- FIX: Do NOT reset the file on error ---
-      // We still want to proceed to the analyze tab.
-      // The backend /analyze endpoint will handle text extraction.
-      console.error("Text extraction failed (will proceed anyway):", err?.response || err);
+      console.error("Upload / text extraction error:", err?.response || err);
+      // Show clear error and do NOT move to analyze
+      const detail =
+        err?.response?.data?.detail ||
+        err?.response?.data?.message ||
+        err?.message ||
+        "Unable to extract text from resume. Try a different file (PDF/DOCX).";
       toast({
-        variant: "default", // Not "destructive", as we are still proceeding
+        variant: "destructive",
         title: "Text Extraction Failed",
-        description: "Moving to Analyze tab. Text will be extracted by the backend.",
+        description: detail,
       });
-      // Clear any old text, since extraction failed
-      setResumeText("");
+      // keep user on upload tab to retry
     } finally {
-      // --- FIX: Always move to the analyze tab ---
       setLoadingUpload(false);
-      setActiveTab("analyze"); // Move to analyze tab regardless of extraction success
     }
   };
 
   const handleContinueFromPaste = () => {
     setResumeText(internalResumeText); // Set parent text state
-    // --- FIX: This will now work ---
     setResumeFile(null); // Clear file state, since we're using text
     setActiveTab("analyze");
   };
@@ -167,13 +189,9 @@ const UploadTab = ({
                 >
                   <Upload className="w-10 h-10 text-slate-400 mb-3" />
                   <p className="font-medium text-slate-700 mb-1">
-                    {isDragOver
-                      ? "Drop your file here"
-                      : "Drag & drop your file here"} {/* <-- FIX: Changed * to : */}
+                    {isDragOver ? "Drop your file here" : "Drag & drop your file here"}
                   </p>
-                  <p className="text-sm text-slate-500 mb-3">
-                    or click to browse
-                  </p>
+                  <p className="text-sm text-slate-500 mb-3">or click to browse</p>
                   <Button
                     type="button"
                     variant="outline"
@@ -186,7 +204,7 @@ const UploadTab = ({
                     ref={fileInputRef}
                     onChange={onFileChange}
                     className="hidden"
-                    accept=".pdf,.docx"
+                    accept=".pdf,.docx,.doc,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                   />
                 </div>
               ) : (
