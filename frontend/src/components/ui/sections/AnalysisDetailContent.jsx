@@ -1,23 +1,27 @@
-// AnalysisDetailContent.jsx
+// components/ui/sections/AnalysisDetailContent.jsx
 import React from "react";
 import { Target, Star } from "lucide-react";
 
-// Use the same local imports your project expects (adjust if your file layout differs)
-import { Card, CardContent, CardHeader, CardTitle } from "./card";
-import { Progress } from "./progress";
-import { Badge } from "./badge";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./accordion";
-import { ScrollArea } from "./scroll-area";
+// Correct relative imports (sections are in components/ui/sections)
+import { Card, CardContent, CardHeader, CardTitle } from "../card";
+import { Progress } from "../progress";
+import { Badge } from "../badge";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "../accordion";
+import { ScrollArea } from "../scroll-area";
 
 /**
  * Defensive AnalysisDetailContent
- *
- * - Guards against missing/invalid fields coming from the server.
- * - Uses safe defaults for numbers and arrays.
- * - Avoids calling methods on undefined values (toFixed, map, etc.)
+ * - Uses correct ../ imports for shared UI components (fixes the Vercel build error)
+ * - Guards against missing/invalid fields
+ * - Avoids calling methods on undefined (toFixed, map, etc.)
  */
 const AnalysisDetailContent = ({ analysis }) => {
-  // If analysis is not provided, show a simple placeholder (don't crash)
+  // If analysis is not provided, show a placeholder (do not crash)
   if (!analysis || typeof analysis !== "object") {
     return (
       <div className="p-6 bg-white rounded shadow-sm text-center">
@@ -67,10 +71,16 @@ const AnalysisDetailContent = ({ analysis }) => {
         {/* Match Score */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg font-semibold text-slate-800">Overall Match Score</CardTitle>
+            <CardTitle className="text-lg font-semibold text-slate-800">
+              Overall Match Score
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={`text-6xl font-bold ${getMatchColor(matchPercentage)} mb-2`}>
+            <div
+              className={`text-6xl font-bold ${getMatchColor(
+                matchPercentage
+              )} mb-2`}
+            >
               {matchPercentage.toFixed(0)}%
             </div>
 
@@ -91,7 +101,9 @@ const AnalysisDetailContent = ({ analysis }) => {
           <Card>
             <CardHeader className="flex-row items-center gap-2 space-y-0">
               <Target className="w-5 h-5 text-indigo-600" />
-              <CardTitle className="text-lg font-semibold text-slate-800">ATS Score</CardTitle>
+              <CardTitle className="text-lg font-semibold text-slate-800">
+                ATS Score
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className={`text-5xl font-bold ${getMatchColor(atsScore)}`}>
@@ -106,7 +118,9 @@ const AnalysisDetailContent = ({ analysis }) => {
           <Card>
             <CardHeader className="flex-row items-center gap-2 space-y-0">
               <Star className="w-5 h-5 text-yellow-500" />
-              <CardTitle className="text-lg font-semibold text-slate-800">Quantification</CardTitle>
+              <CardTitle className="text-lg font-semibold text-slate-800">
+                Quantification
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {quantificationFeedback.length > 0 ? (
@@ -116,7 +130,9 @@ const AnalysisDetailContent = ({ analysis }) => {
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-slate-500">No quantification feedback provided.</p>
+                <p className="text-sm text-slate-500">
+                  No quantification feedback provided.
+                </p>
               )}
             </CardContent>
           </Card>
@@ -125,7 +141,9 @@ const AnalysisDetailContent = ({ analysis }) => {
         {/* Recommendations */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg font-semibold text-slate-800">AI Recommendations</CardTitle>
+            <CardTitle className="text-lg font-semibold text-slate-800">
+              AI Recommendations
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {recommendations.length > 0 ? (
@@ -135,7 +153,9 @@ const AnalysisDetailContent = ({ analysis }) => {
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-slate-500">No recommendations provided.</p>
+              <p className="text-sm text-slate-500">
+                No recommendations provided.
+              </p>
             )}
           </CardContent>
         </Card>
@@ -146,15 +166,21 @@ const AnalysisDetailContent = ({ analysis }) => {
         {/* Matched Skills */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg font-semibold text-slate-800">Matched Skills</CardTitle>
+            <CardTitle className="text-lg font-semibold text-slate-800">
+              Matched Skills
+            </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             {matchedSkills.length > 0 ? (
               matchedSkills.map((skill, i) => (
-                <Badge key={i} variant="success">{(skill || "").toString()}</Badge>
+                <Badge key={i} variant="success">
+                  {(skill || "").toString()}
+                </Badge>
               ))
             ) : (
-              <p className="text-sm text-slate-500">No strong skill matches found.</p>
+              <p className="text-sm text-slate-500">
+                No strong skill matches found.
+              </p>
             )}
           </CardContent>
         </Card>
@@ -162,15 +188,21 @@ const AnalysisDetailContent = ({ analysis }) => {
         {/* Missing Skills */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg font-semibold text-slate-800">Missing Keywords</CardTitle>
+            <CardTitle className="text-lg font-semibold text-slate-800">
+              Missing Keywords
+            </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             {missingSkills.length > 0 ? (
               missingSkills.map((skill, i) => (
-                <Badge key={i} variant="destructive">{(skill || "").toString()}</Badge>
+                <Badge key={i} variant="destructive">
+                  {(skill || "").toString()}
+                </Badge>
               ))
             ) : (
-              <p className="text-sm text-slate-500">No critical missing keywords found.</p>
+              <p className="text-sm text-slate-500">
+                No critical missing keywords found.
+              </p>
             )}
           </CardContent>
         </Card>
