@@ -3,16 +3,24 @@ import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { FileText, ServerCrash } from "lucide-react";
 import AnalysisDetailModal from "./AnalysisDetailModal";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../table";
-import { Skeleton } from "../skeleton";
-import { Badge } from "../badge";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./table";
+import { Skeleton } from "./skeleton";
+import { Badge } from "./badge";
 
 /**
- * HistoryTab - safe rendering
- * - Guards against missing numeric fields and invalid dates
- * - Shows skeleton / friendly messages on error or empty
+ * HistoryTab - safe rendering for history and errors.
  */
+
+const safeErrorString = (err) => {
+  if (!err && err !== 0) return "";
+  if (typeof err === "string") return err;
+  try {
+    return JSON.stringify(err, null, 2);
+  } catch {
+    return String(err);
+  }
+};
 
 const HistoryTab = ({ isActive, api, toast }) => {
   const [history, setHistory] = useState([]);
@@ -32,12 +40,12 @@ const HistoryTab = ({ isActive, api, toast }) => {
         setHistory(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("History fetch error", err?.response || err);
-        const detail = err?.response?.data?.detail || err?.message || "Failed to fetch history.";
+        const detail = err?.response?.data || err?.message || "Failed to fetch history.";
         setError(detail);
         toast({
           variant: "destructive",
           title: "Failed to load history",
-          description: detail,
+          description: typeof detail === "string" ? detail : JSON.stringify(detail, null, 2),
         });
       } finally {
         setLoading(false);
@@ -47,7 +55,6 @@ const HistoryTab = ({ isActive, api, toast }) => {
     fetchHistory();
   }, [isActive, api, toast, history.length, loading]);
 
-  // Safe helpers
   const safeNumber = (val, fallback = 0) => {
     const n = Number(val);
     return Number.isFinite(n) ? n : fallback;
@@ -87,11 +94,20 @@ const HistoryTab = ({ isActive, api, toast }) => {
     }
 
     if (error) {
+      const errText = safeErrorString(error) || "Unknown error";
       return (
-        <div className="flex flex-col items-center justify-center h-48 text-red-600">
-          <ServerCrash className="w-12 h-12 mb-2" />
-          <p className="font-semibold">Error loading history</p>
-          <p className="text-sm">{error}</p>
+        <div className="flex flex-col items-start justify-start h-48">
+          <div className="flex items-center gap-3 mb-3">
+            <ServerCrash className="w-12 h-12 text-red-600" />
+            <div>
+              <p className="font-semibold text-red-700">Error loading history</p>
+              <p className="text-sm text-slate-600">See details below.</p>
+            </div>
+          </div>
+
+          <div className="w-full overflow-auto bg-slate-50 p-3 rounded text-xs font-mono text-red-800">
+            <pre className="whitespace-pre-wrap">{errText}</pre>
+          </div>
         </div>
       );
     }
@@ -133,9 +149,7 @@ const HistoryTab = ({ isActive, api, toast }) => {
                   {item?.target_job_title || "Untitled Analysis"}
                 </TableCell>
                 <TableCell>
-                  <Badge className={getMatchColor(match)}>
-                    {match.toFixed(0)}%
-                  </Badge>
+                  <Badge className={getMatchColor(match)}>{match.toFixed(0)}%</Badge>
                 </TableCell>
                 <TableCell className={`font-medium ${getAtsColor(ats)}`}>
                   {ats.toFixed(0)}
