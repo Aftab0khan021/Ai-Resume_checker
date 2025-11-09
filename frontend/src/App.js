@@ -38,6 +38,7 @@ const api = axios.create({
   timeout: 60000,
 });
 
+// retry 503 once (keeps previous behavior)
 api.interceptors.response.use(
   (r) => r,
   async (error) => {
@@ -50,27 +51,32 @@ api.interceptors.response.use(
   }
 );
 
-// Safe helper: always return a string for displaying errors/details
-const safeErrorString = (obj) => {
-  if (obj == null && obj !== 0) return "";
-  if (typeof obj === "string") return obj;
-  if (typeof obj === "object") {
-    if ("detail" in obj) {
-      const d = obj.detail;
-      if (typeof d === "string") return d;
+/** Convert server error payloads to readable text.
+ * Handles pydantic `detail` arrays and plain string messages.
+ */
+const formatServerDetail = (payload) => {
+  if (!payload) return "";
+  if (typeof payload === "string") return payload;
+  if (Array.isArray(payload)) {
+    // common pydantic detail array -> map to short messages
+    return payload.map((it) => {
       try {
-        return JSON.stringify(d, null, 2);
+        const loc = Array.isArray(it.loc) ? it.loc.join(".") : String(it.loc || "");
+        return `${loc}: ${it.msg || JSON.stringify(it)}`;
       } catch {
-        return String(d);
+        return JSON.stringify(it);
       }
-    }
+    }).join(" | ");
+  }
+  if (typeof payload === "object") {
+    if (payload.detail) return formatServerDetail(payload.detail);
     try {
-      return JSON.stringify(obj, null, 2);
+      return JSON.stringify(payload, null, 2);
     } catch {
-      return String(obj);
+      return String(payload);
     }
   }
-  return String(obj);
+  return String(payload);
 };
 
 function App() {
@@ -111,11 +117,11 @@ function App() {
         const extracted = uploadRes?.data?.text || "";
         if (!extracted || !extracted.trim()) {
           if (cancelled) return;
-          const detail = uploadRes?.data?.detail || "No text extracted from the uploaded file. Please try another file or paste text manually.";
+          const detail = uploadRes?.data?.detail || "No text extracted from the uploaded file.";
           toast({
             variant: "destructive",
             title: "Text Extraction Failed",
-            description: safeErrorString(detail),
+            description: formatServerDetail(detail),
           });
           setActiveTab("upload");
           return;
@@ -125,11 +131,11 @@ function App() {
       } catch (err) {
         if (cancelled) return;
         console.error("Auto-upload error:", err?.response || err);
-        const detail = err?.response?.data || err?.message || "Unable to extract text from resume. Try a different file (PDF/DOCX).";
+        const detail = err?.response?.data || err?.message || "Unable to extract text from resume.";
         toast({
           variant: "destructive",
           title: "Text Extraction Failed",
-          description: safeErrorString(detail),
+          description: formatServerDetail(detail),
         });
         setActiveTab("upload");
       } finally {
@@ -176,11 +182,11 @@ function App() {
           const uploadRes = await api.post("/upload-resume", formData, { timeout: 60000 });
           finalResumeText = uploadRes?.data?.text || "";
           if (!finalResumeText || !finalResumeText.trim()) {
-            const detail = uploadRes?.data?.detail || "No text extracted from uploaded file. Please try a different file.";
+            const detail = uploadRes?.data?.detail || "No text extracted from uploaded file.";
             toast({
               variant: "destructive",
               title: "Text Extraction Failed",
-              description: safeErrorString(detail),
+              description: formatServerDetail(detail),
             });
             setActiveTab("upload");
             return;
@@ -188,11 +194,11 @@ function App() {
           setResumeText(finalResumeText);
         } catch (err) {
           console.error("Upload / text extraction error:", err?.response || err);
-          const detail = err?.response?.data || err?.message || "Unable to extract text from resume. Try a different file (PDF/DOCX).";
+          const detail = err?.response?.data || err?.message || "Unable to extract text from resume.";
           toast({
             variant: "destructive",
             title: "Text Extraction Failed",
-            description: safeErrorString(detail),
+            description: formatServerDetail(detail),
           });
           setActiveTab("upload");
           return;
@@ -200,9 +206,9 @@ function App() {
       }
 
       try {
-        // <-- IMPORTANT FIX: include required query param `func`
+        // <-- IMPORTANT: do NOT include ?func=... (server.py does not require it)
         const res = await api.post(
-          "/analyze?func=match",
+          "/analyze",
           {
             resume_text: finalResumeText,
             job_description: jobDescription,
@@ -223,14 +229,21 @@ function App() {
           });
         }
       } catch (err) {
+        // improved error handling: show pydantic detail arrays nicely if provided
         console.error("Analyze API error:", err?.response || err);
-        console.error("Analyze API response body:", err?.response?.data);
-        const detail = err?.response?.data || err?.message || "Analysis endpoint failed. Please try again.";
+        const respData = err?.response?.data;
+        const formatted = formatServerDetail(respData);
         toast({
           variant: "destructive",
           title: "Analysis Failed",
-          description: safeErrorString(detail),
+          description: formatted || (err?.message || "Analysis endpoint failed. Please try again."),
         });
+        // log the raw response for debugging
+        console.groupCollapsed("ANALYZE ERROR DEBUG");
+        console.log("status:", err?.response?.status);
+        console.log("headers:", err?.response?.headers);
+        console.log("body:", err?.response?.data);
+        console.groupEnd();
         setActiveTab("analyze");
       }
     } finally {
@@ -264,7 +277,7 @@ function App() {
       toast({
         variant: "destructive",
         title: "Summary Failed",
-        description: safeErrorString(detail),
+        description: formatServerDetail(detail),
       });
       setSummaryModalOpen(false);
     } finally {
@@ -384,13 +397,9 @@ function App() {
             />
           )}
 
-          {activeTab === "results" && (
-            <ResultsTab analysis={analysis} resetApp={resetApp} />
-          )}
+          {activeTab === "results" && <ResultsTab analysis={analysis} resetApp={resetApp} />}
 
-          {activeTab === "history" && (
-            <HistoryTab isActive={activeTab === "history"} api={api} toast={toast} />
-          )}
+          {activeTab === "history" && <HistoryTab isActive={activeTab === "history"} api={api} toast={toast} />}
         </main>
 
         <Dialog open={isSummaryModalOpen} onOpenChange={setSummaryModalOpen}>
@@ -398,7 +407,7 @@ function App() {
             <DialogHeader>
               <DialogTitle>AI Generated Summaries</DialogTitle>
               <DialogDescription>
-                Here are 3 professional summary suggestions based on your resume. Copy your favorite.
+                Here are professional summary suggestions based on your resume. Copy your favorite.
               </DialogDescription>
             </DialogHeader>
             <div className="h-full pb-12">
@@ -413,12 +422,7 @@ function App() {
                       <Card key={index} className="bg-slate-50">
                         <CardContent className="p-4 flex items-start gap-4">
                           <p className="text-sm text-slate-800 flex-1">{summary}</p>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => copyToClipboard(summary)}
-                            className="text-slate-500 hover:text-indigo-600"
-                          >
+                          <Button variant="ghost" size="icon" onClick={() => copyToClipboard(summary)} className="text-slate-500 hover:text-indigo-600">
                             <ClipboardCopy className="w-4 h-4" />
                           </Button>
                         </CardContent>
@@ -446,11 +450,7 @@ function App() {
             </div>
             <p className="text-slate-400">Powered by advanced AI to help you land your dream job</p>
             <div className="flex items-center justify-center gap-2 mt-4">
-              <img
-                src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4"
-                alt="Author Avatar"
-                className="w-5 h-5 rounded-full"
-              />
+              <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" alt="Author Avatar" className="w-5 h-5 rounded-full" />
               <p className="text-xs text-slate-400">Made By Aftab</p>
             </div>
           </div>
