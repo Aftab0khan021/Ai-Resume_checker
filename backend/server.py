@@ -24,7 +24,6 @@ from app.db import get_db
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-from motor.motor_asyncio import AsyncIOMotorClient
 
 # Setup logging
 logging.basicConfig(
@@ -355,28 +354,40 @@ async def upload_resume(file: UploadFile = File(...)):
     if not text or not text.strip():
         err_detail = "; ".join(errors) if errors else "No text content detected in file."
         logger.error(f"Text extraction failed for {filename}: {err_detail}")
-        # return http 400 for upload failures (frontend already handles)
         raise HTTPException(status_code=400, detail=f"Unable to extract text: {err_detail}")
 
     return {"text": text, "filename": filename}
 
 # --------- Robust Analyze Handler (fixed) ----------
-@api.post("/analyze", dependencies=[Depends(limiter.limit("10/minute"))])
+@api.post("/analyze")
+@limiter.limit("10/minute")
 async def analyze_resume_job_match(request: Request, func: Optional[str] = Query(None, description="Optional function name (e.g. 'match')")):
     """
     Defensive analyze endpoint:
-    - Reads raw JSON from body
+    - Reads raw JSON from body (with fallback and logging)
     - Accepts optional ?func=... query param for compatibility with clients
     - Performs manual validation and returns 422 with helpful messages on missing/invalid fields
     - Calls analyze_with_ai (or fallback) and persists result (if DB available)
     """
-    # try parse JSON body
+    # try parse JSON body; if it fails, capture raw body and try to decode+parse to give better diagnostics
+    body = None
     try:
         body = await request.json()
     except Exception as e:
-        logger.error(f"Analyze: failed to parse JSON body: {e}")
-        # respond with 422 to match frontend expectations for validation-like errors
-        raise HTTPException(status_code=422, detail=[{"loc": ["body"], "msg": "Invalid JSON body", "type": "value_error"}])
+        # read raw bytes for debugging
+        raw = await request.body()
+        try:
+            decoded = raw.decode("utf-8", errors="replace")
+        except Exception:
+            decoded = str(raw)
+        logger.error(f"Analyze: failed to parse JSON body via request.json(): {e}; raw body starts: {decoded[:1000]!r}")
+        # attempt a tolerant parse
+        try:
+            body = json.loads(decoded)
+            logger.info("Analyze: tolerant json.loads(decoded) succeeded")
+        except Exception as e2:
+            logger.error(f"Analyze: tolerant json.loads also failed: {e2}")
+            raise HTTPException(status_code=422, detail=[{"loc": ["body"], "msg": "Invalid JSON body", "type": "value_error"}])
 
     logger.info(f"Analyze request body keys: {list(body.keys())} func={func}")
 
@@ -465,7 +476,8 @@ async def get_analysis_history():
         out.append(AnalysisResponse(**x))
     return out
 
-@api.post("/generate-summary", response_model=SummaryResponse, dependencies=[Depends(limiter.limit("10/minute"))])
+@api.post("/generate-summary", response_model=SummaryResponse)
+@limiter.limit("10/minute")
 async def generate_summary(request: Request, payload: SummaryRequest):
     resume_text = preprocess_text(payload.resume_text)
     if not resume_text:
@@ -499,7 +511,6 @@ RESUME TEXT:
         raise ValueError("AI JSON parsing for summary failed")
     except Exception as e:
         logger.error(f"Summary generation failed: {e}")
-        # return a successful response but with an error message in summaries so frontend doesn't crash
         return SummaryResponse(summaries=[f"Error generating summaries: {str(e)}"])
 
 @api.get("/health")
