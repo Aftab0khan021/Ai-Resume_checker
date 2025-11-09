@@ -31,7 +31,7 @@ import AnalyzeTab from "./components/ui/sections/AnalyzeTab";
 import ResultsTab from "./components/ui/sections/ResultsTab";
 import HistoryTab from "./components/ui/sections/HistoryTab";
 
-import ErrorBoundary from "./components/ErrorBoundary"; // NEW
+import ErrorBoundary from "./components/ErrorBoundary";
 
 const api = axios.create({
   baseURL: "https://ai-resume-checker-tu2a.onrender.com/api",
@@ -49,6 +49,31 @@ api.interceptors.response.use(
     throw error;
   }
 );
+
+// Safe helper: always return a string for displaying errors/details
+const safeErrorString = (obj) => {
+  if (obj == null && obj !== 0) return "";
+  if (typeof obj === "string") return obj;
+  // If axios response with .data.detail exists, prefer that
+  if (typeof obj === "object") {
+    // if error shape is { detail: ... } use detail
+    if ("detail" in obj) {
+      const d = obj.detail;
+      if (typeof d === "string") return d;
+      try {
+        return JSON.stringify(d, null, 2);
+      } catch {
+        return String(d);
+      }
+    }
+    try {
+      return JSON.stringify(obj, null, 2);
+    } catch {
+      return String(obj);
+    }
+  }
+  return String(obj);
+};
 
 function App() {
   const [resumeText, setResumeText] = useState("");
@@ -88,12 +113,11 @@ function App() {
         const extracted = uploadRes?.data?.text || "";
         if (!extracted || !extracted.trim()) {
           if (cancelled) return;
+          const detail = uploadRes?.data?.detail || "No text extracted from the uploaded file. Please try another file or paste text manually.";
           toast({
             variant: "destructive",
             title: "Text Extraction Failed",
-            description:
-              uploadRes?.data?.detail ||
-              "No text extracted from the uploaded file. Please try another file or paste text manually.",
+            description: safeErrorString(detail),
           });
           setActiveTab("upload");
           return;
@@ -103,13 +127,11 @@ function App() {
       } catch (err) {
         if (cancelled) return;
         console.error("Auto-upload error:", err?.response || err);
+        const detail = err?.response?.data || err?.message || "Unable to extract text from resume. Try a different file (PDF/DOCX).";
         toast({
           variant: "destructive",
           title: "Text Extraction Failed",
-          description:
-            err?.response?.data?.detail ||
-            err?.message ||
-            "Unable to extract text from resume. Try a different file (PDF/DOCX).",
+          description: safeErrorString(detail),
         });
         setActiveTab("upload");
       } finally {
@@ -156,12 +178,11 @@ function App() {
           const uploadRes = await api.post("/upload-resume", formData, { timeout: 60000 });
           finalResumeText = uploadRes?.data?.text || "";
           if (!finalResumeText || !finalResumeText.trim()) {
+            const detail = uploadRes?.data?.detail || "No text extracted from uploaded file. Please try a different file.";
             toast({
               variant: "destructive",
               title: "Text Extraction Failed",
-              description:
-                uploadRes?.data?.detail ||
-                "No text extracted from uploaded file. Please try a different file.",
+              description: safeErrorString(detail),
             });
             setActiveTab("upload");
             return;
@@ -169,13 +190,11 @@ function App() {
           setResumeText(finalResumeText);
         } catch (err) {
           console.error("Upload / text extraction error:", err?.response || err);
+          const detail = err?.response?.data || err?.message || "Unable to extract text from resume. Try a different file (PDF/DOCX).";
           toast({
             variant: "destructive",
             title: "Text Extraction Failed",
-            description:
-              err?.response?.data?.detail ||
-              err?.message ||
-              "Unable to extract text from resume. Try a different file (PDF/DOCX).",
+            description: safeErrorString(detail),
           });
           setActiveTab("upload");
           return;
@@ -207,13 +226,11 @@ function App() {
       } catch (err) {
         console.error("Analyze API error:", err?.response || err);
         console.error("Analyze API response body:", err?.response?.data);
+        const detail = err?.response?.data || err?.message || "Analysis endpoint failed. Please try again.";
         toast({
           variant: "destructive",
           title: "Analysis Failed",
-          description:
-            err?.response?.data?.detail ||
-            err?.message ||
-            "Analysis endpoint failed. Please try again.",
+          description: safeErrorString(detail),
         });
         setActiveTab("analyze");
       }
@@ -244,10 +261,11 @@ function App() {
       setGeneratedSummaries(data.summaries || []);
     } catch (err) {
       console.error("Summary generation error", err?.response || err);
+      const detail = err?.response?.data || err?.message || "Summary generation failed.";
       toast({
         variant: "destructive",
         title: "Summary Failed",
-        description: err?.response?.data?.detail || err.message,
+        description: safeErrorString(detail),
       });
       setSummaryModalOpen(false);
     } finally {
@@ -288,7 +306,6 @@ function App() {
   const navButtonClasses = "w-full sm:flex-1 gap-2 transform transition-transform duration-150 active:scale-95";
 
   return (
-    // Wrap entire app UI in ErrorBoundary so any render-time error is caught
     <ErrorBoundary>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
         <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50">
