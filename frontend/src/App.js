@@ -1,4 +1,4 @@
-// App.js (full file — only small logging/guard changes inside handleAnalysis)
+// src/App.js
 import React, { useState, useEffect } from "react";
 import "./App.css";
 import axios from "axios";
@@ -21,7 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogClose
+  DialogClose,
 } from "./components/ui/dialog";
 import { Card, CardContent } from "./components/ui/card";
 import { ScrollArea } from "./components/ui/scroll-area";
@@ -31,8 +31,10 @@ import AnalyzeTab from "./components/ui/sections/AnalyzeTab";
 import ResultsTab from "./components/ui/sections/ResultsTab";
 import HistoryTab from "./components/ui/sections/HistoryTab";
 
+import ErrorBoundary from "./components/ErrorBoundary"; // NEW
+
 const api = axios.create({
-  baseURL:  "https://ai-resume-checker-tu2a.onrender.com/api",
+  baseURL: "https://ai-resume-checker-tu2a.onrender.com/api",
   timeout: 60000,
 });
 
@@ -116,7 +118,9 @@ function App() {
     };
 
     autoUploadIfNeeded();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [activeTab, resumeFile, resumeText, toast]);
 
   const handleAnalysis = async () => {
@@ -253,11 +257,12 @@ function App() {
 
   const copyToClipboard = (text) => {
     if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(text)
+      navigator.clipboard
+        .writeText(text)
         .then(() => {
           toast({ title: "Copied!", description: "Summary copied to clipboard." });
         })
-        .catch(err => {
+        .catch((err) => {
           console.error("Clipboard copy failed", err);
           toast({ variant: "destructive", title: "Copy Failed", description: "Could not copy text." });
         });
@@ -283,165 +288,160 @@ function App() {
   const navButtonClasses = "w-full sm:flex-1 gap-2 transform transition-transform duration-150 active:scale-95";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50">
-        <div className="w-full max-w-none px-4 sm:px-6 py-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="p-2 bg-indigo-600 rounded-lg">
-              <Brain className="w-6 h-6 text-white" />
+    // Wrap entire app UI in ErrorBoundary so any render-time error is caught
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50">
+          <div className="w-full max-w-none px-4 sm:px-6 py-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="p-2 bg-indigo-600 rounded-lg">
+                <Brain className="w-6 h-6 text-white" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-xl font-bold text-slate-900">AI Resume Matcher</h1>
+                <p className="text-sm text-slate-600">Smart Resume & Job Description Analysis</p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <h1 className="text-xl font-bold text-slate-900">AI Resume Matcher</h1>
-              <p className="text-sm text-slate-600">Smart Resume & Job Description Analysis</p>
-            </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="w-full max-w-none px-4 sm:px-6 py-8">
-        <div className="flex flex-wrap gap-2 mb-8 bg-white/60 p-2 rounded-xl backdrop-blur-sm">
-          <Button
-            variant={activeTab === "upload" ? "default" : "ghost"}
-            onClick={() => setActiveTab("upload")}
-            className={navButtonClasses}
-          >
-            <Upload className="w-4 h-4" />
-            Upload Resume
-          </Button>
-          <Button
-            variant={activeTab === "analyze" ? "default" : "ghost"}
-            onClick={() => setActiveTab("analyze")}
-            className={navButtonClasses}
-          >
-            <Target className="w-4 h-4" />
-            Analyze Match
-          </Button>
-          <Button
-            variant={activeTab === "results" ? "default" : "ghost"}
-            onClick={() => setActiveTab("results")}
-            className={navButtonClasses}
-            disabled={!analysis}
-          >
-            <BarChart3 className="w-4 h-4" />
-            View Results
-          </Button>
-          <Button
-            variant={activeTab === "history" ? "default" : "ghost"}
-            onClick={() => setActiveTab("history")}
-            className={navButtonClasses}
-          >
-            <Clock className="w-4 h-4" />
-            History
-          </Button>
-        </div>
-
-        {activeTab === "upload" && (
-          <UploadTab
-            resumeText={resumeText}
-            setResumeText={setResumeText}
-            setResumeFile={setResumeFile}
-            setActiveTab={setActiveTab}
-            api={api}
-            toast={toast}
-          />
-        )}
-
-        {activeTab === "analyze" && (
-          <AnalyzeTab
-            resumeText={resumeText}
-            setResumeText={setResumeText}
-            jobDescription={jobDescription}
-            setJobDescription={setJobDescription}
-            targetJobTitle={targetJobTitle}
-            setTargetJobTitle={setTargetJobTitle}
-            handleAnalysis={handleAnalysis}
-            loadingAnalyze={loadingAnalyze}
-            handleGenerateSummary={handleGenerateSummary}
-            loadingSummary={loadingSummary}
-          />
-        )}
-
-        {activeTab === "results" && (
-          <ResultsTab
-            analysis={analysis}
-            resetApp={resetApp}
-          />
-        )}
-
-        {activeTab === "history" && (
-          <HistoryTab
-            isActive={activeTab === "history"}
-            api={api}
-            toast={toast}
-          />
-        )}
-
-      </main>
-
-      <Dialog open={isSummaryModalOpen} onOpenChange={setSummaryModalOpen}>
-        <DialogContent className="max-w-2xl h-[70vh]">
-          <DialogHeader>
-            <DialogTitle>AI Generated Summaries</DialogTitle>
-            <DialogDescription>
-              Here are 3 professional summary suggestions based on your resume. Copy your favorite.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="h-full pb-12">
-            <ScrollArea className="h-full pr-6">
-              {loadingSummary ? (
-                <div className="flex items-center justify-center h-48">
-                  <Loader2 className="w-12 h-12 text-indigo-600 animate-spin" />
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {generatedSummaries.map((summary, index) => (
-                    <Card key={index} className="bg-slate-50">
-                      <CardContent className="p-4 flex items-start gap-4">
-                        <p className="text-sm text-slate-800 flex-1">{summary}</p>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => copyToClipboard(summary)}
-                          className="text-slate-500 hover:text-indigo-600"
-                        >
-                          <ClipboardCopy className="w-4 h-4" />
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
+        <main className="w-full max-w-none px-4 sm:px-6 py-8">
+          <div className="flex flex-wrap gap-2 mb-8 bg-white/60 p-2 rounded-xl backdrop-blur-sm">
+            <Button
+              variant={activeTab === "upload" ? "default" : "ghost"}
+              onClick={() => setActiveTab("upload")}
+              className={navButtonClasses}
+            >
+              <Upload className="w-4 h-4" />
+              Upload Resume
+            </Button>
+            <Button
+              variant={activeTab === "analyze" ? "default" : "ghost"}
+              onClick={() => setActiveTab("analyze")}
+              className={navButtonClasses}
+            >
+              <Target className="w-4 h-4" />
+              Analyze Match
+            </Button>
+            <Button
+              variant={activeTab === "results" ? "default" : "ghost"}
+              onClick={() => setActiveTab("results")}
+              className={navButtonClasses}
+              disabled={!analysis}
+            >
+              <BarChart3 className="w-4 h-4" />
+              View Results
+            </Button>
+            <Button
+              variant={activeTab === "history" ? "default" : "ghost"}
+              onClick={() => setActiveTab("history")}
+              className={navButtonClasses}
+            >
+              <Clock className="w-4 h-4" />
+              History
+            </Button>
           </div>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="secondary">
-                Close
-              </Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
-      <footer className="bg-slate-900 text-white py-8 mt-16">
-        <div className="w-full max-w-none px-4 sm:px-6 text-center">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <Brain className="w-5 h-5 text-indigo-400" />
-            <span className="font-semibold">AI Resume Matcher</span>
-          </div>
-          <p className="text-slate-400">Powered by advanced AI to help you land your dream job</p>
-          <div className="flex items-center justify-center gap-2 mt-4">
-            <img
-              src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4"
-              alt="Author Avatar"
-              className="w-5 h-5 rounded-full"
+          {activeTab === "upload" && (
+            <UploadTab
+              resumeText={resumeText}
+              setResumeText={setResumeText}
+              setResumeFile={setResumeFile}
+              setActiveTab={setActiveTab}
+              api={api}
+              toast={toast}
             />
-            <p className="text-xs text-slate-400">Made By Aftab</p>
+          )}
+
+          {activeTab === "analyze" && (
+            <AnalyzeTab
+              resumeText={resumeText}
+              setResumeText={setResumeText}
+              jobDescription={jobDescription}
+              setJobDescription={setJobDescription}
+              targetJobTitle={targetJobTitle}
+              setTargetJobTitle={setTargetJobTitle}
+              handleAnalysis={handleAnalysis}
+              loadingAnalyze={loadingAnalyze}
+              handleGenerateSummary={handleGenerateSummary}
+              loadingSummary={loadingSummary}
+            />
+          )}
+
+          {activeTab === "results" && (
+            <ResultsTab analysis={analysis} resetApp={resetApp} />
+          )}
+
+          {activeTab === "history" && (
+            <HistoryTab isActive={activeTab === "history"} api={api} toast={toast} />
+          )}
+        </main>
+
+        <Dialog open={isSummaryModalOpen} onOpenChange={setSummaryModalOpen}>
+          <DialogContent className="max-w-2xl h-[70vh]">
+            <DialogHeader>
+              <DialogTitle>AI Generated Summaries</DialogTitle>
+              <DialogDescription>
+                Here are 3 professional summary suggestions based on your resume. Copy your favorite.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="h-full pb-12">
+              <ScrollArea className="h-full pr-6">
+                {loadingSummary ? (
+                  <div className="flex items-center justify-center h-48">
+                    <Loader2 className="w-12 h-12 text-indigo-600 animate-spin" />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {generatedSummaries.map((summary, index) => (
+                      <Card key={index} className="bg-slate-50">
+                        <CardContent className="p-4 flex items-start gap-4">
+                          <p className="text-sm text-slate-800 flex-1">{summary}</p>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => copyToClipboard(summary)}
+                            className="text-slate-500 hover:text-indigo-600"
+                          >
+                            <ClipboardCopy className="w-4 h-4" />
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="secondary">
+                  Close
+                </Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <footer className="bg-slate-900 text-white py-8 mt-16">
+          <div className="w-full max-w-none px-4 sm:px-6 text-center">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Brain className="w-5 h-5 text-indigo-400" />
+              <span className="font-semibold">AI Resume Matcher</span>
+            </div>
+            <p className="text-slate-400">Powered by advanced AI to help you land your dream job</p>
+            <div className="flex items-center justify-center gap-2 mt-4">
+              <img
+                src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4"
+                alt="Author Avatar"
+                className="w-5 h-5 rounded-full"
+              />
+              <p className="text-xs text-slate-400">Made By Aftab</p>
+            </div>
           </div>
-        </div>
-      </footer>
-      <Toaster />
-    </div>
+        </footer>
+        <Toaster />
+      </div>
+    </ErrorBoundary>
   );
 }
 
