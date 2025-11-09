@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Loader2, ServerCrash } from "lucide-react";
 import AnalysisDetailContent from "./AnalysisDetailContent";
-import { Button } from "./button";
+import { Button } from "../button";
 import {
   Dialog,
   DialogContent,

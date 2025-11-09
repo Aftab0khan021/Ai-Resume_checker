@@ -3,10 +3,10 @@ import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { FileText, ServerCrash } from "lucide-react";
 import AnalysisDetailModal from "./AnalysisDetailModal";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./table";
-import { Skeleton } from "./skeleton";
-import { Badge } from "./badge";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../table";
+import { Skeleton } from "../skeleton";
+import { Badge } from "../badge";
 
 /**
  * HistoryTab - safe rendering for history and errors.
