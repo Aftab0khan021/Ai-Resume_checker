@@ -1,3 +1,4 @@
+// App.js (full file — only small logging/guard changes inside handleAnalysis)
 import React, { useState, useEffect } from "react";
 import "./App.css";
 import axios from "axios";
@@ -25,16 +26,14 @@ import {
 import { Card, CardContent } from "./components/ui/card";
 import { ScrollArea } from "./components/ui/scroll-area";
 
-// Import new section components from their correct new path
 import UploadTab from "./components/ui/sections/UploadTab";
 import AnalyzeTab from "./components/ui/sections/AnalyzeTab";
 import ResultsTab from "./components/ui/sections/ResultsTab";
 import HistoryTab from "./components/ui/sections/HistoryTab";
 
-// --- Use your backend URL on Render (keep this correct) ---
 const api = axios.create({
   baseURL:  "https://ai-resume-checker-tu2a.onrender.com/api",
-  timeout: 60000, // Increased timeout for analysis/upload
+  timeout: 60000,
 });
 
 api.interceptors.response.use(
@@ -50,7 +49,6 @@ api.interceptors.response.use(
 );
 
 function App() {
-  // Core App State
   const [resumeText, setResumeText] = useState("");
   const [resumeFile, setResumeFile] = useState(null);
   const [jobDescription, setJobDescription] = useState("");
@@ -60,12 +58,10 @@ function App() {
   const [loadingAnalyze, setLoadingAnalyze] = useState(false);
   const { toast } = useToast();
 
-  // AI Summary State
   const [isSummaryModalOpen, setSummaryModalOpen] = useState(false);
   const [generatedSummaries, setGeneratedSummaries] = useState([]);
   const [loadingSummary, setLoadingSummary] = useState(false);
 
-  // Reset to initial
   const resetApp = () => {
     setActiveTab("upload");
     setResumeText("");
@@ -75,13 +71,10 @@ function App() {
     setAnalysis(null);
   };
 
-  // --- NEW: When user navigates to Analyze tab but a file is present and no text extracted,
-  // automatically upload the file and extract text. If extraction fails, return user to Upload.
   useEffect(() => {
     let cancelled = false;
     const autoUploadIfNeeded = async () => {
       if (activeTab !== "analyze") return;
-      // Only auto-upload if user uploaded a file and we don't already have text
       if (!resumeFile || (resumeText && resumeText.trim())) return;
 
       setLoadingAnalyze(true);
@@ -126,7 +119,6 @@ function App() {
     return () => { cancelled = true; };
   }, [activeTab, resumeFile, resumeText, toast]);
 
-  // Main analysis workflow: upload (if file) -> analyze (JSON)
   const handleAnalysis = async () => {
     try {
       if (!resumeFile && !resumeText?.trim()) {
@@ -135,7 +127,6 @@ function App() {
           title: "Error",
           description: "Please upload or paste your resume first.",
         });
-        // Ensure user stays on upload tab
         setActiveTab("upload");
         return;
       }
@@ -154,8 +145,6 @@ function App() {
 
       let finalResumeText = resumeText;
 
-      // If file uploaded but text still empty (safety - upload should have happened in useEffect),
-      // try to upload now (this is a fallback).
       if (resumeFile && !finalResumeText.trim()) {
         const formData = new FormData();
         formData.append("file", resumeFile);
@@ -189,7 +178,6 @@ function App() {
         }
       }
 
-      // Now call analyze with JSON payload
       try {
         const res = await api.post(
           "/analyze",
@@ -201,10 +189,20 @@ function App() {
           { timeout: 60000 }
         );
 
-        setAnalysis(res.data);
-        setActiveTab("results");
+        if (res && res.data && typeof res.data === "object") {
+          setAnalysis(res.data);
+          setActiveTab("results");
+        } else {
+          console.warn("Analyze API returned unexpected payload:", res);
+          toast({
+            variant: "destructive",
+            title: "Analysis Failed",
+            description: "Unexpected response from analysis endpoint.",
+          });
+        }
       } catch (err) {
         console.error("Analyze API error:", err?.response || err);
+        console.error("Analyze API response body:", err?.response?.data);
         toast({
           variant: "destructive",
           title: "Analysis Failed",
@@ -213,7 +211,6 @@ function App() {
             err?.message ||
             "Analysis endpoint failed. Please try again.",
         });
-        // stay on analyze tab so user can retry
         setActiveTab("analyze");
       }
     } finally {
@@ -221,7 +218,6 @@ function App() {
     }
   };
 
-  // AI Summary generation
   const handleGenerateSummary = async () => {
     const textToSummarize = resumeText || (analysis ? analysis.resume_text : "");
     if (!textToSummarize?.trim()) {
@@ -255,7 +251,6 @@ function App() {
     }
   };
 
-  // Copy helper
   const copyToClipboard = (text) => {
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(text)
@@ -289,7 +284,6 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Header */}
       <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50">
         <div className="w-full max-w-none px-4 sm:px-6 py-4">
           <div className="flex flex-wrap items-center gap-3">
@@ -305,7 +299,6 @@ function App() {
       </header>
 
       <main className="w-full max-w-none px-4 sm:px-6 py-8">
-        {/* Navigation Tabs */}
         <div className="flex flex-wrap gap-2 mb-8 bg-white/60 p-2 rounded-xl backdrop-blur-sm">
           <Button
             variant={activeTab === "upload" ? "default" : "ghost"}
@@ -385,7 +378,6 @@ function App() {
 
       </main>
 
-      {/* AI Summary Modal */}
       <Dialog open={isSummaryModalOpen} onOpenChange={setSummaryModalOpen}>
         <DialogContent className="max-w-2xl h-[70vh]">
           <DialogHeader>
@@ -431,7 +423,6 @@ function App() {
         </DialogContent>
       </Dialog>
 
-      {/* Footer */}
       <footer className="bg-slate-900 text-white py-8 mt-16">
         <div className="w-full max-w-none px-4 sm:px-6 text-center">
           <div className="flex items-center justify-center gap-2 mb-2">

@@ -1,13 +1,18 @@
+// components/ui/sections/HistoryTab.jsx
 import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { FileText, ServerCrash } from "lucide-react";
 import AnalysisDetailModal from "./AnalysisDetailModal";
-// --- FIXED IMPORTS (and added CardDescription) ---
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../table";
 import { Skeleton } from "../skeleton";
 import { Badge } from "../badge";
-// --------------------------------------------------
+
+/**
+ * HistoryTab - safe rendering
+ * - Guards against missing numeric fields and invalid dates
+ * - Shows skeleton / friendly messages on error or empty
+ */
 
 const HistoryTab = ({ isActive, api, toast }) => {
   const [history, setHistory] = useState([]);
@@ -16,35 +21,54 @@ const HistoryTab = ({ isActive, api, toast }) => {
   const [selectedAnalysis, setSelectedAnalysis] = useState(null);
 
   useEffect(() => {
-    // Only fetch history if the tab is active and not already loaded
-    if (isActive && history.length === 0 && loading) {
-      const fetchHistory = async () => {
-        try {
-          setError(null);
-          const { data } = await api.get("/analysis-history");
-          setHistory(data || []);
-        } catch (err) {
-          console.error("History fetch error", err?.response || err);
-          setError(err?.response?.data?.detail || err.message);
-          toast({
-            variant: "destructive",
-            title: "Failed to load history",
-            description: err?.response?.data?.detail || err.message,
-          });
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchHistory();
-    }
+    if (!isActive) return;
+    if (history.length > 0 || !loading) return;
+
+    const fetchHistory = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const { data } = await api.get("/analysis-history");
+        setHistory(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("History fetch error", err?.response || err);
+        const detail = err?.response?.data?.detail || err?.message || "Failed to fetch history.";
+        setError(detail);
+        toast({
+          variant: "destructive",
+          title: "Failed to load history",
+          description: detail,
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHistory();
   }, [isActive, api, toast, history.length, loading]);
+
+  // Safe helpers
+  const safeNumber = (val, fallback = 0) => {
+    const n = Number(val);
+    return Number.isFinite(n) ? n : fallback;
+  };
+
+  const safeDateString = (val) => {
+    try {
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return null;
+      return format(d, "MMM d, yyyy");
+    } catch {
+      return null;
+    }
+  };
 
   const getMatchColor = (score) => {
     if (score > 75) return "bg-green-100 text-green-800";
     if (score > 50) return "bg-yellow-100 text-yellow-800";
     return "bg-red-100 text-red-800";
   };
-  
+
   const getAtsColor = (score) => {
     if (score > 80) return "text-green-600";
     if (score > 60) return "text-yellow-600";
@@ -72,7 +96,7 @@ const HistoryTab = ({ isActive, api, toast }) => {
       );
     }
 
-    if (history.length === 0) {
+    if (!history || history.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center h-48 text-slate-500">
           <FileText className="w-12 h-12 mb-2" />
@@ -93,28 +117,32 @@ const HistoryTab = ({ isActive, api, toast }) => {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {history.map((item) => (
-            <TableRow 
-              key={item.id} 
-              onClick={() => setSelectedAnalysis(item.id)}
-              className="cursor-pointer hover:bg-slate-50"
-            >
-              <TableCell className="text-sm text-slate-600">
-                {format(new Date(item.created_at), "MMM d, yyyy")}
-              </TableCell>
-              <TableCell className="font-medium text-slate-900 max-w-xs truncate">
-                {item.target_job_title || "Untitled Analysis"}
-              </TableCell>
-              <TableCell>
-                <Badge className={getMatchColor(item.match_percentage)}>
-                  {item.match_percentage.toFixed(0)}%
-                </Badge>
-              </TableCell>
-              <TableCell className={`font-medium ${getAtsColor(item.ats_compatibility_score)}`}>
-                {item.ats_compatibility_score.toFixed(0)}
-              </TableCell>
-            </TableRow>
-          ))}
+          {history.map((item) => {
+            const match = safeNumber(item?.match_percentage, 0);
+            const ats = safeNumber(item?.ats_compatibility_score, 0);
+            const createdAt = safeDateString(item?.created_at) || "Unknown date";
+
+            return (
+              <TableRow
+                key={item?.id || Math.random().toString(36).slice(2)}
+                onClick={() => setSelectedAnalysis(item?.id)}
+                className="cursor-pointer hover:bg-slate-50"
+              >
+                <TableCell className="text-sm text-slate-600">{createdAt}</TableCell>
+                <TableCell className="font-medium text-slate-900 max-w-xs truncate">
+                  {item?.target_job_title || "Untitled Analysis"}
+                </TableCell>
+                <TableCell>
+                  <Badge className={getMatchColor(match)}>
+                    {match.toFixed(0)}%
+                  </Badge>
+                </TableCell>
+                <TableCell className={`font-medium ${getAtsColor(ats)}`}>
+                  {ats.toFixed(0)}
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     );
@@ -129,12 +157,9 @@ const HistoryTab = ({ isActive, api, toast }) => {
             View your 10 most recent analysis results. Click a row to see details.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          {renderContent()}
-        </CardContent>
+        <CardContent>{renderContent()}</CardContent>
       </Card>
-      
-      {/* Analysis Detail Modal */}
+
       <AnalysisDetailModal
         analysisId={selectedAnalysis}
         isOpen={!!selectedAnalysis}
