@@ -33,15 +33,19 @@ import HistoryTab from "./components/ui/sections/HistoryTab";
 
 import ErrorBoundary from "./components/ErrorBoundary";
 
+/**
+ * NOTE:
+ * - Your backend base URL (render) — keep this correct for your deployment.
+ */
 const api = axios.create({
   baseURL: "https://ai-resume-checker-tu2a.onrender.com/api",
   timeout: 60000,
 });
 
-// retry 503 once (keeps previous behavior)
 api.interceptors.response.use(
   (r) => r,
   async (error) => {
+    // simple single-retry logic for 503s (keep previous behavior)
     if (error?.response?.status === 503 && !error.config.__retried) {
       error.config.__retried = true;
       await new Promise((res) => setTimeout(res, 1500));
@@ -51,22 +55,22 @@ api.interceptors.response.use(
   }
 );
 
-/** Convert server error payloads to readable text.
- * Handles pydantic `detail` arrays and plain string messages.
- */
-const formatServerDetail = (payload) => {
-  if (!payload) return "";
+// Format backend error payloads (Pydantic detail arrays, strings, objects)
+function formatServerDetail(payload) {
+  if (!payload && payload !== 0) return "";
   if (typeof payload === "string") return payload;
   if (Array.isArray(payload)) {
-    // common pydantic detail array -> map to short messages
-    return payload.map((it) => {
-      try {
-        const loc = Array.isArray(it.loc) ? it.loc.join(".") : String(it.loc || "");
-        return `${loc}: ${it.msg || JSON.stringify(it)}`;
-      } catch {
-        return JSON.stringify(it);
-      }
-    }).join(" | ");
+    return payload
+      .map((it) => {
+        if (!it) return JSON.stringify(it);
+        try {
+          const loc = Array.isArray(it.loc) ? it.loc.join(".") : it.loc || "";
+          return loc ? `${loc}: ${it.msg || JSON.stringify(it)}` : it.msg || JSON.stringify(it);
+        } catch {
+          return JSON.stringify(it);
+        }
+      })
+      .join(" | ");
   }
   if (typeof payload === "object") {
     if (payload.detail) return formatServerDetail(payload.detail);
@@ -77,7 +81,19 @@ const formatServerDetail = (payload) => {
     }
   }
   return String(payload);
-};
+}
+
+/**
+ * Heuristics: check a 422/400 error payload for a missing query param 'func'.
+ * Returns true if the server detail mentions query.func or 'func' in locs/messages.
+ */
+function serverWantsFunc(detail) {
+  if (!detail) return false;
+  const text = typeof detail === "string" ? detail : JSON.stringify(detail);
+  if (!text) return false;
+  // look for "query","func" in pydantic loc or any 'func' mention
+  return text.includes('"func"') || text.includes("query.func") || /"loc":\s*\[.*"query".*"func".*\]/.test(text) || /func/.test(text);
+}
 
 function App() {
   const [resumeText, setResumeText] = useState("");
@@ -102,6 +118,8 @@ function App() {
     setAnalysis(null);
   };
 
+  // If user switches to analyze and had uploaded a file but no extracted text,
+  // auto-upload once to get resume text (keeps previous behavior).
   useEffect(() => {
     let cancelled = false;
     const autoUploadIfNeeded = async () => {
@@ -118,11 +136,7 @@ function App() {
         if (!extracted || !extracted.trim()) {
           if (cancelled) return;
           const detail = uploadRes?.data?.detail || "No text extracted from the uploaded file.";
-          toast({
-            variant: "destructive",
-            title: "Text Extraction Failed",
-            description: formatServerDetail(detail),
-          });
+          toast({ variant: "destructive", title: "Text Extraction Failed", description: formatServerDetail(detail) });
           setActiveTab("upload");
           return;
         }
@@ -132,11 +146,7 @@ function App() {
         if (cancelled) return;
         console.error("Auto-upload error:", err?.response || err);
         const detail = err?.response?.data || err?.message || "Unable to extract text from resume.";
-        toast({
-          variant: "destructive",
-          title: "Text Extraction Failed",
-          description: formatServerDetail(detail),
-        });
+        toast({ variant: "destructive", title: "Text Extraction Failed", description: formatServerDetail(detail) });
         setActiveTab("upload");
       } finally {
         if (!cancelled) setLoadingAnalyze(false);
@@ -149,32 +159,25 @@ function App() {
     };
   }, [activeTab, resumeFile, resumeText, toast]);
 
+  // Main analysis flow: attempt analyze; if server requires func, retry once with ?func=match
   const handleAnalysis = async () => {
     try {
       if (!resumeFile && !resumeText?.trim()) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Please upload or paste your resume first.",
-        });
+        toast({ variant: "destructive", title: "Error", description: "Please upload or paste your resume first." });
         setActiveTab("upload");
         return;
       }
 
       if (!jobDescription?.trim()) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Please enter the job description.",
-        });
+        toast({ variant: "destructive", title: "Error", description: "Please enter the job description." });
         setActiveTab("analyze");
         return;
       }
 
       setLoadingAnalyze(true);
 
+      // If file present but no text, upload it now
       let finalResumeText = resumeText;
-
       if (resumeFile && !finalResumeText.trim()) {
         const formData = new FormData();
         formData.append("file", resumeFile);
@@ -183,11 +186,7 @@ function App() {
           finalResumeText = uploadRes?.data?.text || "";
           if (!finalResumeText || !finalResumeText.trim()) {
             const detail = uploadRes?.data?.detail || "No text extracted from uploaded file.";
-            toast({
-              variant: "destructive",
-              title: "Text Extraction Failed",
-              description: formatServerDetail(detail),
-            });
+            toast({ variant: "destructive", title: "Text Extraction Failed", description: formatServerDetail(detail) });
             setActiveTab("upload");
             return;
           }
@@ -195,56 +194,74 @@ function App() {
         } catch (err) {
           console.error("Upload / text extraction error:", err?.response || err);
           const detail = err?.response?.data || err?.message || "Unable to extract text from resume.";
-          toast({
-            variant: "destructive",
-            title: "Text Extraction Failed",
-            description: formatServerDetail(detail),
-          });
+          toast({ variant: "destructive", title: "Text Extraction Failed", description: formatServerDetail(detail) });
           setActiveTab("upload");
           return;
         }
       }
 
-      try {
-        // <-- IMPORTANT: do NOT include ?func=... (server.py does not require it)
-        const res = await api.post(
-          "/analyze",
-          {
-            resume_text: finalResumeText,
-            job_description: jobDescription,
-            target_job_title: targetJobTitle,
-          },
-          { timeout: 60000 }
-        );
+      // Try POSTing to /analyze normally
+      const payload = {
+        resume_text: finalResumeText,
+        job_description: jobDescription,
+        target_job_title: targetJobTitle,
+      };
 
+      let didRetryWithFunc = false;
+      const doAnalyzeRequest = async (urlSuffix = "") => {
+        return api.post(`/analyze${urlSuffix}`, payload, { timeout: 60000 });
+      };
+
+      try {
+        const res = await doAnalyzeRequest("");
         if (res && res.data && typeof res.data === "object") {
           setAnalysis(res.data);
           setActiveTab("results");
+          return;
         } else {
-          console.warn("Analyze API returned unexpected payload:", res);
-          toast({
-            variant: "destructive",
-            title: "Analysis Failed",
-            description: "Unexpected response from analysis endpoint.",
-          });
+          // Unexpected payload type from server
+          toast({ variant: "destructive", title: "Analysis Failed", description: "Unexpected response from analysis endpoint." });
+          return;
         }
       } catch (err) {
-        // improved error handling: show pydantic detail arrays nicely if provided
-        console.error("Analyze API error:", err?.response || err);
+        // If server wants a query param 'func', retry once with ?func=match
+        const status = err?.response?.status;
         const respData = err?.response?.data;
-        const formatted = formatServerDetail(respData);
-        toast({
-          variant: "destructive",
-          title: "Analysis Failed",
-          description: formatted || (err?.message || "Analysis endpoint failed. Please try again."),
-        });
-        // log the raw response for debugging
+        console.error("Analyze API error:", err?.response || err);
         console.groupCollapsed("ANALYZE ERROR DEBUG");
-        console.log("status:", err?.response?.status);
+        console.log("status:", status);
         console.log("headers:", err?.response?.headers);
-        console.log("body:", err?.response?.data);
+        console.log("body:", respData);
         console.groupEnd();
+
+        // If server indicates it needs func in the query (422 / pydantic detail), retry with ?func=match
+        if (!didRetryWithFunc && status && (status === 422 || status === 400) && serverWantsFunc(respData)) {
+          didRetryWithFunc = true;
+          try {
+            const res2 = await doAnalyzeRequest("?func=match");
+            if (res2 && res2.data && typeof res2.data === "object") {
+              setAnalysis(res2.data);
+              setActiveTab("results");
+              return;
+            } else {
+              toast({ variant: "destructive", title: "Analysis Failed", description: "Unexpected response from analysis endpoint (retry)." });
+              return;
+            }
+          } catch (err2) {
+            // final failure — show readable detail
+            console.error("Analyze retry error:", err2?.response || err2);
+            const fd = formatServerDetail(err2?.response?.data || err2?.message);
+            toast({ variant: "destructive", title: "Analysis Failed", description: fd || "Analysis failed (retry)." });
+            setActiveTab("analyze");
+            return;
+          }
+        }
+
+        // If not a func-related error, or retry exhausted, show the server detail
+        const formatted = formatServerDetail(respData || err?.message);
+        toast({ variant: "destructive", title: "Analysis Failed", description: formatted || "Analysis endpoint failed." });
         setActiveTab("analyze");
+        return;
       }
     } finally {
       setLoadingAnalyze(false);
@@ -254,11 +271,7 @@ function App() {
   const handleGenerateSummary = async () => {
     const textToSummarize = resumeText || (analysis ? analysis.resume_text : "");
     if (!textToSummarize?.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Summary Error",
-        description: "Resume text is empty. Cannot generate summary.",
-      });
+      toast({ variant: "destructive", title: "Summary Error", description: "Resume text is empty. Cannot generate summary." });
       return;
     }
 
@@ -267,18 +280,12 @@ function App() {
     setSummaryModalOpen(true);
 
     try {
-      const { data } = await api.post("/generate-summary", {
-        resume_text: textToSummarize,
-      });
+      const { data } = await api.post("/generate-summary", { resume_text: textToSummarize });
       setGeneratedSummaries(data.summaries || []);
     } catch (err) {
       console.error("Summary generation error", err?.response || err);
       const detail = err?.response?.data || err?.message || "Summary generation failed.";
-      toast({
-        variant: "destructive",
-        title: "Summary Failed",
-        description: formatServerDetail(detail),
-      });
+      toast({ variant: "destructive", title: "Summary Failed", description: formatServerDetail(detail) });
       setSummaryModalOpen(false);
     } finally {
       setLoadingSummary(false);
@@ -287,32 +294,30 @@ function App() {
 
   const copyToClipboard = (text) => {
     if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard
-        .writeText(text)
-        .then(() => {
-          toast({ title: "Copied!", description: "Summary copied to clipboard." });
-        })
-        .catch((err) => {
-          console.error("Clipboard copy failed", err);
+      navigator.clipboard.writeText(text).then(
+        () => toast({ title: "Copied!", description: "Summary copied to clipboard." }),
+        (e) => {
+          console.error("Clipboard copy failed", e);
           toast({ variant: "destructive", title: "Copy Failed", description: "Could not copy text." });
-        });
-    } else {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed";
-      ta.style.left = "-9999px";
-      ta.style.top = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      try {
-        document.execCommand("copy");
-        toast({ title: "Copied!", description: "Summary copied to clipboard." });
-      } catch (err) {
-        console.error("Fallback copy failed", err);
-        toast({ variant: "destructive", title: "Copy Failed", description: "Could not copy text." });
-      }
-      document.body.removeChild(ta);
+        }
+      );
+      return;
     }
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    ta.style.top = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+      toast({ title: "Copied!", description: "Summary copied to clipboard." });
+    } catch (err) {
+      console.error("Fallback copy failed", err);
+      toast({ variant: "destructive", title: "Copy Failed", description: "Could not copy text." });
+    }
+    document.body.removeChild(ta);
   };
 
   const navButtonClasses = "w-full sm:flex-1 gap-2 transform transition-transform duration-150 active:scale-95";
@@ -336,50 +341,26 @@ function App() {
 
         <main className="w-full max-w-none px-4 sm:px-6 py-8">
           <div className="flex flex-wrap gap-2 mb-8 bg-white/60 p-2 rounded-xl backdrop-blur-sm">
-            <Button
-              variant={activeTab === "upload" ? "default" : "ghost"}
-              onClick={() => setActiveTab("upload")}
-              className={navButtonClasses}
-            >
+            <Button variant={activeTab === "upload" ? "default" : "ghost"} onClick={() => setActiveTab("upload")} className={navButtonClasses}>
               <Upload className="w-4 h-4" />
               Upload Resume
             </Button>
-            <Button
-              variant={activeTab === "analyze" ? "default" : "ghost"}
-              onClick={() => setActiveTab("analyze")}
-              className={navButtonClasses}
-            >
+            <Button variant={activeTab === "analyze" ? "default" : "ghost"} onClick={() => setActiveTab("analyze")} className={navButtonClasses}>
               <Target className="w-4 h-4" />
               Analyze Match
             </Button>
-            <Button
-              variant={activeTab === "results" ? "default" : "ghost"}
-              onClick={() => setActiveTab("results")}
-              className={navButtonClasses}
-              disabled={!analysis}
-            >
+            <Button variant={activeTab === "results" ? "default" : "ghost"} onClick={() => setActiveTab("results")} className={navButtonClasses} disabled={!analysis}>
               <BarChart3 className="w-4 h-4" />
               View Results
             </Button>
-            <Button
-              variant={activeTab === "history" ? "default" : "ghost"}
-              onClick={() => setActiveTab("history")}
-              className={navButtonClasses}
-            >
+            <Button variant={activeTab === "history" ? "default" : "ghost"} onClick={() => setActiveTab("history")} className={navButtonClasses}>
               <Clock className="w-4 h-4" />
               History
             </Button>
           </div>
 
           {activeTab === "upload" && (
-            <UploadTab
-              resumeText={resumeText}
-              setResumeText={setResumeText}
-              setResumeFile={setResumeFile}
-              setActiveTab={setActiveTab}
-              api={api}
-              toast={toast}
-            />
+            <UploadTab resumeText={resumeText} setResumeText={setResumeText} setResumeFile={setResumeFile} setActiveTab={setActiveTab} api={api} toast={toast} />
           )}
 
           {activeTab === "analyze" && (
@@ -406,9 +387,7 @@ function App() {
           <DialogContent className="max-w-2xl h-[70vh]">
             <DialogHeader>
               <DialogTitle>AI Generated Summaries</DialogTitle>
-              <DialogDescription>
-                Here are professional summary suggestions based on your resume. Copy your favorite.
-              </DialogDescription>
+              <DialogDescription>Here are 3 professional summary suggestions based on your resume. Copy your favorite.</DialogDescription>
             </DialogHeader>
             <div className="h-full pb-12">
               <ScrollArea className="h-full pr-6">
@@ -418,8 +397,8 @@ function App() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {generatedSummaries.map((summary, index) => (
-                      <Card key={index} className="bg-slate-50">
+                    {generatedSummaries.map((summary, idx) => (
+                      <Card key={idx} className="bg-slate-50">
                         <CardContent className="p-4 flex items-start gap-4">
                           <p className="text-sm text-slate-800 flex-1">{summary}</p>
                           <Button variant="ghost" size="icon" onClick={() => copyToClipboard(summary)} className="text-slate-500 hover:text-indigo-600">
@@ -455,6 +434,7 @@ function App() {
             </div>
           </div>
         </footer>
+
         <Toaster />
       </div>
     </ErrorBoundary>
