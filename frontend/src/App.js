@@ -207,9 +207,22 @@ function App() {
         target_job_title: targetJobTitle,
       };
 
+      // Debug log: show the payload being sent (helps track invalid JSON issues)
+      console.log("ANALYZE: sending payload:", payload);
+
       let didRetryWithFunc = false;
+
+      // ensure we always send JSON string body (avoid accidental non-JSON sends)
       const doAnalyzeRequest = async (urlSuffix = "") => {
-        return api.post(`/analyze${urlSuffix}`, payload, { timeout: 60000 });
+        // stringify explicitly and set header
+        const bodyString = JSON.stringify(payload);
+        return api.post(`/analyze${urlSuffix}`, bodyString, {
+          timeout: 60000,
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+        });
       };
 
       try {
