@@ -1,4 +1,4 @@
-// components/ui/sections/AnalysisDetailModal.jsx
+// src/components/ui/sections/AnalysisDetailModal.jsx
 import React, { useState, useEffect } from "react";
 import { Loader2, ServerCrash } from "lucide-react";
 import AnalysisDetailContent from "./AnalysisDetailContent";
@@ -11,13 +11,8 @@ import {
   DialogDescription,
   DialogFooter,
   DialogClose,
-} from "./dialog";
-import { ScrollArea } from "./scroll-area";
-
-/**
- * AnalysisDetailModal - fetches a single analysis and displays details.
- * - Fix: when server returns structured error (object/array), convert it into a safe string before rendering.
- */
+} from "../dialog";
+import { ScrollArea } from "../scroll-area";
 
 const safeErrorString = (err) => {
   if (!err && err !== 0) return "";
@@ -35,31 +30,28 @@ const AnalysisDetailModal = ({ analysisId, isOpen, onClose, api, toast }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (isOpen && analysisId) {
-      const fetchAnalysis = async () => {
-        setLoading(true);
-        setError(null);
-        setAnalysis(null);
-        try {
-          const { data } = await api.get(`/analysis/${analysisId}`);
-          setAnalysis(data);
-        } catch (err) {
-          console.error("Fetch analysis detail error", err?.response || err);
-          const detail = err?.response?.data || err?.message || "Unknown error";
-          setError(detail);
-          toast({
-            variant: "destructive",
-            title: "Failed to load analysis",
-            // make sure toast description is a string
-            description:
-              typeof detail === "string" ? detail : JSON.stringify(detail, null, 2),
-          });
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchAnalysis();
-    }
+    if (!isOpen || !analysisId) return;
+    const fetchAnalysis = async () => {
+      setLoading(true);
+      setError(null);
+      setAnalysis(null);
+      try {
+        const { data } = await api.get(`/analysis/${analysisId}`);
+        setAnalysis(data);
+      } catch (err) {
+        console.error("Fetch analysis detail error", err?.response || err);
+        const detail = err?.response?.data || err?.message || "Unknown error";
+        setError(detail);
+        toast({
+          variant: "destructive",
+          title: "Failed to load analysis",
+          description: safeErrorString(detail),
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAnalysis();
   }, [analysisId, isOpen, api, toast]);
 
   const renderContent = () => {
@@ -72,7 +64,7 @@ const AnalysisDetailModal = ({ analysisId, isOpen, onClose, api, toast }) => {
     }
 
     if (error) {
-      const errText = safeErrorString(error) || "Unknown error";
+      const txt = safeErrorString(error) || "Unknown error";
       return (
         <div className="flex flex-col items-start justify-start h-96">
           <div className="flex items-center gap-3 mb-4">
@@ -84,7 +76,7 @@ const AnalysisDetailModal = ({ analysisId, isOpen, onClose, api, toast }) => {
           </div>
 
           <div className="w-full overflow-auto bg-slate-50 p-3 rounded text-xs font-mono text-red-800">
-            <pre className="whitespace-pre-wrap">{errText}</pre>
+            <pre className="whitespace-pre-wrap">{txt}</pre>
           </div>
         </div>
       );
@@ -102,18 +94,16 @@ const AnalysisDetailModal = ({ analysisId, isOpen, onClose, api, toast }) => {
       <DialogContent className="max-w-4xl h-[90vh]">
         <DialogHeader>
           <DialogTitle>Analysis Details</DialogTitle>
-          <DialogDescription>
-            Detailed breakdown for {analysis?.target_job_title || "your analysis"}.
-          </DialogDescription>
+          <DialogDescription>Detailed breakdown for {analysis?.target_job_title || "your analysis"}.</DialogDescription>
         </DialogHeader>
+
         <div className="h-full pb-12">
           <ScrollArea className="h-full pr-6">{renderContent()}</ScrollArea>
         </div>
+
         <DialogFooter>
           <DialogClose asChild>
-            <Button type="button" variant="secondary">
-              Close
-            </Button>
+            <Button type="button" variant="secondary">Close</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>

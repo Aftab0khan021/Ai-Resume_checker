@@ -1,4 +1,4 @@
-// components/ui/sections/HistoryTab.jsx
+// src/components/ui/sections/HistoryTab.jsx
 import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { FileText, ServerCrash } from "lucide-react";
@@ -7,10 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ca
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../table";
 import { Skeleton } from "../skeleton";
 import { Badge } from "../badge";
-
-/**
- * HistoryTab - safe rendering for history and errors.
- */
 
 const safeErrorString = (err) => {
   if (!err && err !== 0) return "";
@@ -42,11 +38,7 @@ const HistoryTab = ({ isActive, api, toast }) => {
         console.error("History fetch error", err?.response || err);
         const detail = err?.response?.data || err?.message || "Failed to fetch history.";
         setError(detail);
-        toast({
-          variant: "destructive",
-          title: "Failed to load history",
-          description: typeof detail === "string" ? detail : JSON.stringify(detail, null, 2),
-        });
+        toast({ variant: "destructive", title: "Failed to load history", description: safeErrorString(detail) });
       } finally {
         setLoading(false);
       }
@@ -70,17 +62,8 @@ const HistoryTab = ({ isActive, api, toast }) => {
     }
   };
 
-  const getMatchColor = (score) => {
-    if (score > 75) return "bg-green-100 text-green-800";
-    if (score > 50) return "bg-yellow-100 text-yellow-800";
-    return "bg-red-100 text-red-800";
-  };
-
-  const getAtsColor = (score) => {
-    if (score > 80) return "text-green-600";
-    if (score > 60) return "text-yellow-600";
-    return "text-red-600";
-  };
+  const getMatchColor = (score) => (score > 75 ? "bg-green-100 text-green-800" : score > 50 ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800");
+  const getAtsColor = (score) => (score > 80 ? "text-green-600" : score > 60 ? "text-yellow-600" : "text-red-600");
 
   const renderContent = () => {
     if (loading) {
@@ -139,21 +122,11 @@ const HistoryTab = ({ isActive, api, toast }) => {
             const createdAt = safeDateString(item?.created_at) || "Unknown date";
 
             return (
-              <TableRow
-                key={item?.id || Math.random().toString(36).slice(2)}
-                onClick={() => setSelectedAnalysis(item?.id)}
-                className="cursor-pointer hover:bg-slate-50"
-              >
+              <TableRow key={item?.id || Math.random().toString(36).slice(2)} onClick={() => setSelectedAnalysis(item?.id)} className="cursor-pointer hover:bg-slate-50">
                 <TableCell className="text-sm text-slate-600">{createdAt}</TableCell>
-                <TableCell className="font-medium text-slate-900 max-w-xs truncate">
-                  {item?.target_job_title || "Untitled Analysis"}
-                </TableCell>
-                <TableCell>
-                  <Badge className={getMatchColor(match)}>{match.toFixed(0)}%</Badge>
-                </TableCell>
-                <TableCell className={`font-medium ${getAtsColor(ats)}`}>
-                  {ats.toFixed(0)}
-                </TableCell>
+                <TableCell className="font-medium text-slate-900 max-w-xs truncate">{item?.target_job_title || "Untitled Analysis"}</TableCell>
+                <TableCell><Badge className={getMatchColor(match)}>{match.toFixed(0)}%</Badge></TableCell>
+                <TableCell className={`font-medium ${getAtsColor(ats)}`}>{ats.toFixed(0)}</TableCell>
               </TableRow>
             );
           })}
@@ -167,20 +140,12 @@ const HistoryTab = ({ isActive, api, toast }) => {
       <Card>
         <CardHeader>
           <CardTitle>Analysis History</CardTitle>
-          <CardDescription>
-            View your 10 most recent analysis results. Click a row to see details.
-          </CardDescription>
+          <CardDescription>View your 10 most recent analysis results. Click a row to see details.</CardDescription>
         </CardHeader>
         <CardContent>{renderContent()}</CardContent>
       </Card>
 
-      <AnalysisDetailModal
-        analysisId={selectedAnalysis}
-        isOpen={!!selectedAnalysis}
-        onClose={() => setSelectedAnalysis(null)}
-        api={api}
-        toast={toast}
-      />
+      <AnalysisDetailModal analysisId={selectedAnalysis} isOpen={!!selectedAnalysis} onClose={() => setSelectedAnalysis(null)} api={api} toast={toast} />
     </>
   );
 };

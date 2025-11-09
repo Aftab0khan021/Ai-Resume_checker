@@ -1,17 +1,14 @@
+// src/components/ui/sections/ResultsTab.jsx
 import React from "react";
-// --- FIXED IMPORTS ---
 import { Button } from "../button";
-// ---------------------
-import AnalysisDetailContent from "./AnalysisDetailContent"; // This was likely correct already
+import AnalysisDetailContent from "./AnalysisDetailContent";
 
 const ResultsTab = ({ analysis, resetApp }) => {
   if (!analysis) {
     return (
       <div className="text-center p-12 bg-white rounded-lg shadow-sm">
         <h2 className="text-xl font-semibold text-slate-700">No Analysis Found</h2>
-        <p className="text-slate-500 mb-4">
-          Please upload a resume and job description to see your results.
-        </p>
+        <p className="text-slate-500 mb-4">Please upload a resume and job description to see your results.</p>
         <Button onClick={resetApp}>Start New Analysis</Button>
       </div>
     );
@@ -30,10 +27,8 @@ const ResultsTab = ({ analysis, resetApp }) => {
           <Button onClick={resetApp}>Start New Analysis</Button>
         </div>
       </div>
-      
-      {/* Re-usable content component */}
+
       <AnalysisDetailContent analysis={analysis} />
-      
     </div>
   );
 };
