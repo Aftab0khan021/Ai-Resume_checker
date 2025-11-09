@@ -54,9 +54,7 @@ api.interceptors.response.use(
 const safeErrorString = (obj) => {
   if (obj == null && obj !== 0) return "";
   if (typeof obj === "string") return obj;
-  // If axios response with .data.detail exists, prefer that
   if (typeof obj === "object") {
-    // if error shape is { detail: ... } use detail
     if ("detail" in obj) {
       const d = obj.detail;
       if (typeof d === "string") return d;
@@ -202,8 +200,9 @@ function App() {
       }
 
       try {
+        // <-- IMPORTANT FIX: include required query param `func`
         const res = await api.post(
-          "/analyze",
+          "/analyze?func=match",
           {
             resume_text: finalResumeText,
             job_description: jobDescription,
