@@ -1,3 +1,4 @@
+# server.py
 import os
 import io
 import re
@@ -5,10 +6,10 @@ import uuid
 import json
 import logging
 from datetime import datetime, timezone
-from typing import List, Dict, Any
-from contextlib import asynccontextmanager 
+from typing import List, Dict, Any, Optional
+from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException, Depends, Request
+from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException, Depends, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import nltk
@@ -354,46 +355,52 @@ async def upload_resume(file: UploadFile = File(...)):
     if not text or not text.strip():
         err_detail = "; ".join(errors) if errors else "No text content detected in file."
         logger.error(f"Text extraction failed for {filename}: {err_detail}")
+        # return http 400 for upload failures (frontend already handles)
         raise HTTPException(status_code=400, detail=f"Unable to extract text: {err_detail}")
 
     return {"text": text, "filename": filename}
 
 # --------- Robust Analyze Handler (fixed) ----------
 @api.post("/analyze", dependencies=[Depends(limiter.limit("10/minute"))])
-async def analyze_resume_job_match(request: Request):
+async def analyze_resume_job_match(request: Request, func: Optional[str] = Query(None, description="Optional function name (e.g. 'match')")):
     """
     Defensive analyze endpoint:
     - Reads raw JSON from body
-    - Logs body for debugging
-    - Performs manual validation and returns 400 with helpful messages on missing/invalid fields
+    - Accepts optional ?func=... query param for compatibility with clients
+    - Performs manual validation and returns 422 with helpful messages on missing/invalid fields
     - Calls analyze_with_ai (or fallback) and persists result (if DB available)
     """
+    # try parse JSON body
     try:
         body = await request.json()
     except Exception as e:
         logger.error(f"Analyze: failed to parse JSON body: {e}")
-        raise HTTPException(status_code=400, detail="Invalid JSON body")
+        # respond with 422 to match frontend expectations for validation-like errors
+        raise HTTPException(status_code=422, detail=[{"loc": ["body"], "msg": "Invalid JSON body", "type": "value_error"}])
 
-    logger.info(f"Analyze request body keys: {list(body.keys())}")
+    logger.info(f"Analyze request body keys: {list(body.keys())} func={func}")
 
-    # Validate fields
+    # Validate fields (return 422 with pydantic-like detail array)
     resume_text = body.get("resume_text")
     job_description = body.get("job_description")
     target_job_title = body.get("target_job_title", "") or ""
 
+    missing_details = []
     if resume_text is None:
-        logger.warning("Analyze: missing 'resume_text' in body")
-        raise HTTPException(status_code=400, detail="Missing field: resume_text")
+        missing_details.append({"loc": ["body", "resume_text"], "msg": "Field required", "type": "value_error.missing"})
     if job_description is None:
-        logger.warning("Analyze: missing 'job_description' in body")
-        raise HTTPException(status_code=400, detail="Missing field: job_description")
+        missing_details.append({"loc": ["body", "job_description"], "msg": "Field required", "type": "value_error.missing"})
+
+    if missing_details:
+        logger.warning(f"Analyze: missing fields: {missing_details}")
+        raise HTTPException(status_code=422, detail=missing_details)
 
     if not isinstance(resume_text, str) or not resume_text.strip():
         logger.warning("Analyze: resume_text must be a non-empty string")
-        raise HTTPException(status_code=400, detail="resume_text must be a non-empty string")
+        raise HTTPException(status_code=422, detail=[{"loc": ["body", "resume_text"], "msg": "resume_text must be a non-empty string", "type": "value_error"}])
     if not isinstance(job_description, str) or not job_description.strip():
         logger.warning("Analyze: job_description must be a non-empty string")
-        raise HTTPException(status_code=400, detail="job_description must be a non-empty string")
+        raise HTTPException(status_code=422, detail=[{"loc": ["body", "job_description"], "msg": "job_description must be a non-empty string", "type": "value_error"}])
 
     # Preprocess
     r_text = preprocess_text(resume_text)
@@ -462,7 +469,7 @@ async def get_analysis_history():
 async def generate_summary(request: Request, payload: SummaryRequest):
     resume_text = preprocess_text(payload.resume_text)
     if not resume_text:
-        raise HTTPException(status_code=400, detail="Resume text is required")
+        raise HTTPException(status_code=422, detail=[{"loc": ["body", "resume_text"], "msg": "Resume text is required", "type": "value_error"}])
 
     try:
         api_key = os.getenv("EMERGENT_LLM_KEY")
@@ -492,6 +499,7 @@ RESUME TEXT:
         raise ValueError("AI JSON parsing for summary failed")
     except Exception as e:
         logger.error(f"Summary generation failed: {e}")
+        # return a successful response but with an error message in summaries so frontend doesn't crash
         return SummaryResponse(summaries=[f"Error generating summaries: {str(e)}"])
 
 @api.get("/health")
