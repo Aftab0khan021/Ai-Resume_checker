@@ -18,6 +18,11 @@ import docx
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+
+# ---------- FIX: import AsyncIOMotorClient used in lifespan (was missing) ----------
+from motor.motor_asyncio import AsyncIOMotorClient
+
+# Use the project's db helper (this file is untouched)
 from app.db import get_db
 
 # Rate limiting imports
@@ -44,18 +49,29 @@ except LookupError:
 # Rate limiter
 limiter = Limiter(key_func=get_remote_address, default_limits=["1000/hour"])
 
+# ---------- GLOBAL DB HOLDER ----------
+# server.py used a 'db' within lifespan; declare here so it's clear and available.
+db = None
+
 # Lifespan for MongoDB connection attempt (non-fatal)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """
+    Attempt to connect to MongoDB during startup. This is defensive: if connection
+    fails or env var not present, we set `db = None` and continue running (non-fatal).
+    """
     global db
     try:
-        mongo_url = os.getenv("MONGO_URL")
+        mongo_url = os.getenv("MONGO_URL")  # consistent with app.db usage
         if mongo_url:
             client = AsyncIOMotorClient(mongo_url)
             db = client[os.getenv("DB_NAME", "resume_matcher_db")]
-            # Ping to test connectivity
-            await client.admin.command('ping')
-            logger.info("Successfully connected to MongoDB (during startup).")
+            # Ping to test connectivity (may raise)
+            try:
+                await client.admin.command("ping")
+                logger.info("Successfully connected to MongoDB (during startup).")
+            except Exception as e_ping:
+                logger.warning(f"Connected client created but ping failed: {e_ping}")
         else:
             logger.warning("MONGO_URL not set; running without DB persistence.")
             db = None
@@ -63,6 +79,7 @@ async def lifespan(app: FastAPI):
         logger.warning(f"Warning: Error connecting to MongoDB at startup: {e}")
         db = None
     yield
+    # optional: close client on shutdown (left minimal to avoid touching unrelated code)
 
 app = FastAPI(title="AI Resume & Job Matcher API", lifespan=lifespan)
 api = APIRouter(prefix="/api")
@@ -436,45 +453,83 @@ async def analyze_resume_job_match(request: Request, func: Optional[str] = Query
         quantification_feedback=result["quantification_feedback"],
     )
 
-    db_conn = get_db()
+    # ---------- FIX: defensive get_db usage (do not use truthy test on DB object) ----------
     try:
-        if db_conn:
-            await db_conn.analysis_results.insert_one(doc.dict())
-            logger.info("Analyze: saved analysis result to DB")
-    except Exception as e:
-        logger.warning(f"Analyze: failed to persist analysis result: {e}")
+        db_conn = None
+        try:
+            db_conn = get_db()
+        except Exception as e_getdb:
+            # get_db may raise if env var missing or connection problems; handle gracefully
+            logger.warning(f"Analyze: get_db() failed or DB not configured: {e_getdb}")
+            db_conn = None
+
+        if db_conn is not None:
+            # ensure analysis_results collection exists and insert
+            try:
+                await db_conn.analysis_results.insert_one(doc.dict())
+                logger.info("Analyze: saved analysis result to DB")
+            except Exception as e_insert:
+                logger.warning(f"Analyze: failed to persist analysis result: {e_insert}")
+    except Exception:
+        # outer safety net — never crash the endpoint due to persistence
+        logger.exception("Unexpected error during DB persistence step")
 
     return AnalysisResponse(**doc.dict())
 
 @api.get("/analysis/{analysis_id}", response_model=AnalysisResponse)
 async def get_analysis_detail(analysis_id: str):
-    db = get_db()
-    if not db:
-        raise HTTPException(status_code=500, detail="Database not available")
-    item = await db.analysis_results.find_one({"id": analysis_id})
-    if not item:
-        raise HTTPException(status_code=404, detail="Analysis not found")
-    item.pop("_id", None)
-    return AnalysisResponse(**item)
+    # ---------- FIX: check get_db() defensively and compare to None ----------
+    try:
+        try:
+            db_local = get_db()
+        except Exception as e_db:
+            logger.warning(f"get_analysis_detail: DB not available: {e_db}")
+            db_local = None
+
+        if db_local is None:
+            raise HTTPException(status_code=500, detail="Database not available")
+
+        item = await db_local.analysis_results.find_one({"id": analysis_id})
+        if not item:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        item.pop("_id", None)
+        return AnalysisResponse(**item)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("get_analysis_detail: unexpected error")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @api.get("/analysis-history", response_model=List[AnalysisResponse])
 async def get_analysis_history():
-    db = get_db()
-    if not db:
-        return []
-    projection = {"resume_text": 0, "job_description": 0}
-    cursor = db.analysis_results.find({}, projection).sort("created_at", -1).limit(10)
-    items = await cursor.to_list(length=None)
-    out: List[AnalysisResponse] = []
-    for x in items or []:
-        x.pop("_id", None)
-        x.setdefault("resume_text", "")
-        x.setdefault("job_description", "")
-        x.setdefault("ats_compatibility_score", 0)
-        x.setdefault("quantification_feedback", [])
-        x.setdefault("target_job_title", "")
-        out.append(AnalysisResponse(**x))
-    return out
+    # ---------- FIX: get_db() defensively and avoid `if not db` style checks ----------
+    try:
+        try:
+            db_local = get_db()
+        except Exception as e_db:
+            logger.warning(f"get_analysis_history: DB not available: {e_db}")
+            db_local = None
+
+        if db_local is None:
+            # If DB not configured, return empty list (frontend handles no-history gracefully)
+            return []
+
+        projection = {"resume_text": 0, "job_description": 0}
+        cursor = db_local.analysis_results.find({}, projection).sort("created_at", -1).limit(10)
+        items = await cursor.to_list(length=None)
+        out: List[AnalysisResponse] = []
+        for x in items or []:
+            x.pop("_id", None)
+            x.setdefault("resume_text", "")
+            x.setdefault("job_description", "")
+            x.setdefault("ats_compatibility_score", 0)
+            x.setdefault("quantification_feedback", [])
+            x.setdefault("target_job_title", "")
+            out.append(AnalysisResponse(**x))
+        return out
+    except Exception as e:
+        logger.exception("get_analysis_history: failed")
+        raise HTTPException(status_code=500, detail="Failed to load analysis history")
 
 @api.post("/generate-summary", response_model=SummaryResponse)
 @limiter.limit("10/minute")
@@ -516,9 +571,15 @@ RESUME TEXT:
 @api.get("/health")
 async def health():
     try:
-        db = get_db()
-        if db:
-            await db.command("ping")
+        try:
+            db_local = get_db()
+        except Exception as e_db:
+            logger.warning(f"health: DB not available: {e_db}")
+            db_local = None
+
+        if db_local is not None:
+            # Use command ping (motor/pymongo API)
+            await db_local.command("ping")
         return {"status": "ok"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
