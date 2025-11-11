@@ -237,12 +237,31 @@ def get_missing_skills_from_tfidf(resume_text: str, job_description: str) -> Lis
         return ["Communication", "Leadership", "Project Management"]
 
 # ---------- AI helper ----------
+# Replace your current analyze_with_ai(...) with this complete function
 async def analyze_with_ai(resume_text: str, job_description: str, target_job_title: str) -> Dict[str, Any]:
+    """
+    Robust analyze_with_ai:
+     - If LLM works, parse JSON and return fields.
+     - If anything fails (no key, parsing error, runtime), compute a deterministic fallback.
+     - Always ensures variables used in returned dict are defined.
+    """
+    # helper: safe defaults
+    safe_default = {
+        "match_percentage": 0.0,
+        "matched_skills": [],
+        "missing_skills": [],
+        "recommendations": [],
+        "analysis_summary": "Analysis unavailable.",
+        "ats_compatibility_score": 0.0,
+        "quantification_feedback": [],
+    }
+
     try:
         api_key = os.getenv("EMERGENT_LLM_KEY")
         if not api_key:
             raise RuntimeError("EMERGENT_LLM_KEY not configured")
 
+        # attempt LLM analysis (keep your existing LLM code here)
         from emergentintegrations.llm.chat import LlmChat, UserMessage
 
         chat = LlmChat(
@@ -274,31 +293,58 @@ JSON FORMAT:
         response = await chat.send_message(UserMessage(text=prompt))
         text = str(response)
 
+        # try to extract JSON object from model output
         s, e = text.find("{"), text.rfind("}") + 1
-        if s != -1 and e != -1:
-            payload = json.loads(text[s:e])
-            return {
-                "match_percentage": float(payload.get("match_percentage", 0)),
-                "matched_skills": list(payload.get("matched_skills", [])),
-                "missing_skills": list(payload.get("missing_skills", [])),
-                "recommendations": list(payload.get("recommendations", [])),
-                "analysis_summary": str(payload.get("analysis_summary", "AI analysis completed.")),
-                "ats_compatibility_score": float(payload.get("ats_compatibility_score", 0)),
-                "quantification_feedback": list(payload.get("quantification_feedback", [])),
-            }
+        if s == -1 or e == 0:
+            raise ValueError("AI returned no JSON")
 
-        raise ValueError("AI JSON parsing failed")
+        payload = json.loads(text[s:e])
+
+        # Normalize returned fields and ensure types
+        match_percentage = float(payload.get("match_percentage", 0.0))
+        matched_skills_list = list(payload.get("matched_skills", []))
+        missing_skills_list = list(payload.get("missing_skills", []))
+        recommendations = list(payload.get("recommendations", []))
+        analysis_summary = str(payload.get("analysis_summary", "AI analysis completed."))
+        ats_score = float(payload.get("ats_compatibility_score", 0.0))
+        quant_feedback = list(payload.get("quantification_feedback", []))
+
+        return {
+            "match_percentage": match_percentage,
+            "matched_skills": matched_skills_list,
+            "missing_skills": missing_skills_list,
+            "recommendations": recommendations,
+            "analysis_summary": analysis_summary,
+            "ats_compatibility_score": ats_score,
+            "quantification_feedback": quant_feedback,
+        }
 
     except Exception as e:
-        logger.warning(f"AI analysis unavailable, using basic similarity. Reason: {e}")
-        score = calculate_basic_similarity(resume_text, job_description)
-        missing_skills_list = get_missing_skills_from_tfidf(resume_text, job_description)
+        # Log the reason for fallback
+        logger.warning(f"AI analysis unavailable, using deterministic fallback. Reason: {e}")
+
+        # Fallback: compute semantic match (0-100) using your existing helper
+        try:
+            score = calculate_basic_similarity(resume_text, job_description)
+        except Exception:
+            score = 0.0
+
+        # Ensure these helper functions exist in your file; if not, implement minimal versions
+        try:
+            missing_skills_list = get_missing_skills_from_tfidf(resume_text, job_description)
+        except Exception:
+            missing_skills_list = []
+
+        try:
+            matched_skills_list = extract_skills_from_text(resume_text)[:8]
+        except Exception:
+            matched_skills_list = []
+
         def formatting_score_from_text(text: str) -> float:
             txt = text or ""
             lines = [l.strip() for l in txt.splitlines() if l.strip()]
             if not lines:
                 return 20.0
-
             headings = 0
             for keyword in ("experience", "education", "skills", "contact", "summary", "projects"):
                 for l in lines[:30]:
@@ -306,34 +352,33 @@ JSON FORMAT:
                         headings += 1
                         break
             headings_score = min(1.0, headings / 4.0)
-
             bullet_like = sum(1 for l in lines if l.startswith(("-", "*", "•")) or re.match(r"^\d+[\).\s]", l))
             bullet_fraction = bullet_like / max(1, len(lines))
             bullet_score = min(1.0, bullet_fraction * 2.0)
-
             year_matches = re.findall(r"\b(19|20)\d{2}\b", txt)
             year_score = min(1.0, len(set(year_matches)) / 3.0)
-
             combined = (0.5 * headings_score) + (0.35 * bullet_score) + (0.15 * year_score)
             return float(max(0.0, min(100.0, round(combined * 100.0))))
 
         formatting_sc = formatting_score_from_text(resume_text)
+
         ats_raw = (0.6 * score) + (0.4 * formatting_sc)
-        ats = max(0, min(100, round(ats_raw)))
+        ats = float(max(0, min(100, round(ats_raw))))
 
         recommendations = [
-            "Highlight relevant experience with clear headings (Experience, Education, Skills).",
-            "Use bullet points for measurable accomplishments and include dates for roles.",
-            "Add quantifiable achievements (numbers, percentages) where possible.",
+            "Add clear headings: Experience, Education, Skills, Contact.",
+            "Use bullet points and include dates for roles.",
+            "Add measurable results (numbers, % improvements) for key achievements.",
         ]
+
         return {
-            "match_percentage": score,
+            "match_percentage": float(score),
             "matched_skills": matched_skills_list,
             "missing_skills": missing_skills_list,
             "recommendations": recommendations,
-            "analysis_summary": f"Basic analysis completed with {score:.1f}% match score.",
-            "ats_compatibility_score": float(ats),
-            "quantification_feedback": ["Consider adding measurable metrics to 2-3 key accomplishments."],
+            "analysis_summary": f"Fallback analysis: basic similarity {score:.1f}%",
+            "ats_compatibility_score": ats,
+            "quantification_feedback": ["Consider adding measurable metrics to 2-3 accomplishments."],
         }
 
 # ---------- Routes ----------
