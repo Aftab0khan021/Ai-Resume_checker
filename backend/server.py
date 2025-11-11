@@ -293,18 +293,47 @@ JSON FORMAT:
         logger.warning(f"AI analysis unavailable, using basic similarity. Reason: {e}")
         score = calculate_basic_similarity(resume_text, job_description)
         missing_skills_list = get_missing_skills_from_tfidf(resume_text, job_description)
+        def formatting_score_from_text(text: str) -> float:
+            txt = text or ""
+            lines = [l.strip() for l in txt.splitlines() if l.strip()]
+            if not lines:
+                return 20.0
+
+            headings = 0
+            for keyword in ("experience", "education", "skills", "contact", "summary", "projects"):
+                for l in lines[:30]:
+                    if keyword in l.lower():
+                        headings += 1
+                        break
+            headings_score = min(1.0, headings / 4.0)
+
+            bullet_like = sum(1 for l in lines if l.startswith(("-", "*", "•")) or re.match(r"^\d+[\).\s]", l))
+            bullet_fraction = bullet_like / max(1, len(lines))
+            bullet_score = min(1.0, bullet_fraction * 2.0)
+
+            year_matches = re.findall(r"\b(19|20)\d{2}\b", txt)
+            year_score = min(1.0, len(set(year_matches)) / 3.0)
+
+            combined = (0.5 * headings_score) + (0.35 * bullet_score) + (0.15 * year_score)
+            return float(max(0.0, min(100.0, round(combined * 100.0))))
+
+        formatting_sc = formatting_score_from_text(resume_text)
+        ats_raw = (0.6 * score) + (0.4 * formatting_sc)
+        ats = max(0, min(100, round(ats_raw)))
+
+        recommendations = [
+            "Highlight relevant experience with clear headings (Experience, Education, Skills).",
+            "Use bullet points for measurable accomplishments and include dates for roles.",
+            "Add quantifiable achievements (numbers, percentages) where possible.",
+        ]
         return {
             "match_percentage": score,
-            "matched_skills": extract_skills_from_text(resume_text)[:5],
+            "matched_skills": matched_skills_list,
             "missing_skills": missing_skills_list,
-            "recommendations": [
-                "Highlight relevant experience more prominently",
-                "Add specific technical certifications",
-                "Include quantifiable achievements",
-            ],
+            "recommendations": recommendations,
             "analysis_summary": f"Basic analysis completed with {score:.1f}% match score.",
-            "ats_compatibility_score": 70.0,
-            "quantification_feedback": ["Consider adding metrics to 2-3 key accomplishments."],
+            "ats_compatibility_score": float(ats),
+            "quantification_feedback": ["Consider adding measurable metrics to 2-3 key accomplishments."],
         }
 
 # ---------- Routes ----------
