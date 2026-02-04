@@ -38,7 +38,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
  * - Your backend base URL (render) — keep this correct for your deployment.
  */
 const api = axios.create({
-  baseURL: "https://ai-resume-checker-tu2a.onrender.com/api",
+  baseURL: process.env.REACT_APP_API_URL || "http://localhost:8000/api",
   timeout: 60000,
 });
 

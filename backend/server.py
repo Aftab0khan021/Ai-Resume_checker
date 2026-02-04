@@ -88,7 +88,7 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ----------------------------
-# CORS: make explicit and permissive for vercel + localhost origins.
+# CORS: Allow localhost for development and Vercel deployments for production
 # ----------------------------
 DEFAULT_ORIGINS = [
     "http://localhost:3000",
@@ -102,7 +102,7 @@ if _extra:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=DEFAULT_ORIGINS,
-    allow_origin_regex=r"^https?:\/\/.*\.vercel\.app$",
+    allow_origin_regex=r"^https?://.*\.vercel\.app$",  # Allow all Vercel deployments
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -237,38 +237,27 @@ def get_missing_skills_from_tfidf(resume_text: str, job_description: str) -> Lis
         return ["Communication", "Leadership", "Project Management"]
 
 # ---------- AI helper ----------
-# Replace your current analyze_with_ai(...) with this complete function
 async def analyze_with_ai(resume_text: str, job_description: str, target_job_title: str) -> Dict[str, Any]:
     """
-    Robust analyze_with_ai:
+    Robust analyze_with_ai using google.generativeai:
      - If LLM works, parse JSON and return fields.
      - If anything fails (no key, parsing error, runtime), compute a deterministic fallback.
      - Always ensures variables used in returned dict are defined.
     """
-    # helper: safe defaults
-    safe_default = {
-        "match_percentage": 0.0,
-        "matched_skills": [],
-        "missing_skills": [],
-        "recommendations": [],
-        "analysis_summary": "Analysis unavailable.",
-        "ats_compatibility_score": 0.0,
-        "quantification_feedback": [],
-    }
-
     try:
-        api_key = os.getenv("EMERGENT_LLM_KEY")
+        # Try GEMINI_API_KEY first, fallback to EMERGENT_LLM_KEY for backward compatibility
+        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("EMERGENT_LLM_KEY")
         if not api_key:
-            raise RuntimeError("EMERGENT_LLM_KEY not configured")
+            raise RuntimeError("GEMINI_API_KEY not configured")
 
-        # attempt LLM analysis (keep your existing LLM code here)
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
-
-        chat = LlmChat(
-            api_key=api_key,
-            session_id=str(uuid.uuid4()),
-            system_message="You are an expert HR analyst and career counselor specializing in resume-job matching analysis.",
-        ).with_model("gemini", "gemini-2.5-flash")
+        # Use google.generativeai directly
+        import google.generativeai as genai
+        
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(
+            model_name="gemini-2.0-flash-exp",
+            system_instruction="You are an expert HR analyst and career counselor specializing in resume-job matching analysis."
+        )
 
         prompt = f"""
 Analyze the following resume against the job description and provide a detailed assessment in JSON.
@@ -290,8 +279,8 @@ JSON FORMAT:
   "quantification_feedback": ["feedback1", "feedback2"]
 }}
 """
-        response = await chat.send_message(UserMessage(text=prompt))
-        text = str(response)
+        response = model.generate_content(prompt)
+        text = response.text
 
         # try to extract JSON object from model output
         s, e = text.find("{"), text.rfind("}") + 1
@@ -613,16 +602,18 @@ async def generate_summary(request: Request, payload: SummaryRequest):
         raise HTTPException(status_code=422, detail=[{"loc": ["body", "resume_text"], "msg": "Resume text is required", "type": "value_error"}])
 
     try:
-        api_key = os.getenv("EMERGENT_LLM_KEY")
+        # Try GEMINI_API_KEY first, fallback to EMERGENT_LLM_KEY for backward compatibility
+        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("EMERGENT_LLM_KEY")
         if not api_key:
-            raise RuntimeError("EMERGENT_LLM_KEY not configured")
+            raise RuntimeError("GEMINI_API_KEY not configured")
 
-        from emergentintegrations.llm.chat import LlmChat, UserMessage
-        chat = LlmChat(
-            api_key=api_key,
-            session_id=str(uuid.uuid4()),
-            system_message="You are an expert resume writer.",
-        ).with_model("gemini", "gemini-2.5-flash")
+        import google.generativeai as genai
+        
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(
+            model_name="gemini-2.0-flash-exp",
+            system_instruction="You are an expert resume writer."
+        )
 
         prompt = f"""
 Based on the following resume text, write 3 professional, high-impact summary statements for a job application.
@@ -631,8 +622,8 @@ Return them as a JSON list in the format: {{ "summaries": ["summary1", "summary2
 RESUME TEXT:
 {resume_text[:2000]}...
 """
-        response = await chat.send_message(UserMessage(text=prompt))
-        text = str(response)
+        response = model.generate_content(prompt)
+        text = response.text
         s, e = text.find("{"), text.rfind("}") + 1
         if s != -1 and e != -1:
             payload = json.loads(text[s:e])

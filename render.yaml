@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: ai-resume-checker-backend
+    runtime: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && uvicorn server:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: MONGO_URL
+        sync: false
+      - key: DB_NAME
+        value: ai_resume_checker
+      - key: FRONTEND_ORIGINS
+        sync: false
