@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 import { useReactToPrint } from "react-to-print";
 import { Printer, Layout, X, Eye, ChevronLeft, Check } from "lucide-react";
-import { TemplateModern, TemplateProfessional, TemplateMinimalist, TemplateCreative, TemplateTimeline } from "../components/ResumeTemplates";
+import { TemplateModern, TemplateProfessional, TemplateMinimalist, TemplateCreative, TemplateTimeline, TemplateTwoColumn, TemplateCompact, TemplateGrid, TemplateHeaderFocused, TemplateAsymmetric, TemplateHorizontalSections } from "../components/ResumeTemplates";
 import { getThemeStyle, getFontStyle } from "../utils/templateThemes";
 
 // MANUAL PRESET DEFINITIONS - Expanded Collection
@@ -140,6 +140,62 @@ const manualPresets = [
         previewColor: "#0891b2", // Cyan
         themeId: "cyan",
         fontId: "sans"
+    },
+
+    // NEW STRUCTURAL LAYOUTS
+    {
+        id: "twocolumn-1",
+        name: "Balanced Two-Column",
+        layoutId: "twocolumn",
+        description: "Equal 50/50 split with centered header",
+        previewColor: "#0891b2",
+        themeId: "cyan",
+        fontId: "sans"
+    },
+    {
+        id: "compact-1",
+        name: "Compact Professional",
+        layoutId: "compact",
+        description: "Dense single column, ATS-friendly",
+        previewColor: "#334155",
+        themeId: "slate",
+        fontId: "sans"
+    },
+    {
+        id: "grid-1",
+        name: "Grid Magazine",
+        layoutId: "grid",
+        description: "Magazine-style 3-column grid layout",
+        previewColor: "#6366f1",
+        themeId: "indigo",
+        fontId: "sans"
+    },
+    {
+        id: "header-1",
+        name: "Header Dominant",
+        layoutId: "headerfocused",
+        description: "Large header with two columns below",
+        previewColor: "#1e3a8a",
+        themeId: "blue",
+        fontId: "sans"
+    },
+    {
+        id: "asymmetric-1",
+        name: "Asymmetric Modern",
+        layoutId: "asymmetric",
+        description: "30/70 split with narrow sidebar",
+        previewColor: "#0d9488",
+        themeId: "teal",
+        fontId: "sans"
+    },
+    {
+        id: "horizontal-1",
+        name: "Horizontal Sections",
+        layoutId: "horizontal",
+        description: "Full-width stacked sections",
+        previewColor: "#475569",
+        themeId: "slate",
+        fontId: "sans"
     }
 ];
 
@@ -210,7 +266,13 @@ export default function ResumeBuilder() {
         professional: TemplateProfessional,
         minimalist: TemplateMinimalist,
         creative: TemplateCreative,
-        timeline: TemplateTimeline
+        timeline: TemplateTimeline,
+        twocolumn: TemplateTwoColumn,
+        compact: TemplateCompact,
+        grid: TemplateGrid,
+        headerfocused: TemplateHeaderFocused,
+        asymmetric: TemplateAsymmetric,
+        horizontal: TemplateHorizontalSections
     };
     const SelectedTemplateComponent = templates[selectedPreset.layoutId] || TemplateModern;
 

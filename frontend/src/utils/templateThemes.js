@@ -57,7 +57,13 @@ export const layoutThemes = [
     { id: "professional", name: "Professional Classic" },
     { id: "minimalist", name: "Clean Minimalist" },
     { id: "creative", name: "Creative Left" },
-    { id: "timeline", name: "Timeline Vertical" }
+    { id: "timeline", name: "Timeline Vertical" },
+    { id: "twocolumn", name: "Two Column Balanced" },
+    { id: "compact", name: "Compact Single" },
+    { id: "grid", name: "Grid Layout" },
+    { id: "headerfocused", name: "Header Dominant" },
+    { id: "asymmetric", name: "Asymmetric Split" },
+    { id: "horizontal", name: "Horizontal Sections" }
 ];
 
 export const getThemeStyle = (themeId) => colorThemes.find(t => t.id === themeId) || colorThemes[0];
