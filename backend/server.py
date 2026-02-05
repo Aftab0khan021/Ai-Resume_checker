@@ -254,7 +254,7 @@ async def analyze_with_ai(resume_text: str, job_description: str, target_job_tit
         import google.generativeai as genai
         
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-pro")
+        model = genai.GenerativeModel("gemini-pro")
 
         prompt = f"""
 Analyze the following resume against the job description and provide a detailed assessment in JSON.
@@ -607,7 +607,7 @@ async def generate_summary(request: Request, payload: SummaryRequest):
         import google.generativeai as genai
         
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-pro")
+        model = genai.GenerativeModel("gemini-pro")
 
         prompt = f"""
 Based on the following resume text, write 3 professional, high-impact summary statements for a job application.
