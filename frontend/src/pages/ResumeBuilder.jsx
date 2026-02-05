@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { useReactToPrint } from "react-to-print";
 import { Printer, LayoutTemplate, PenTool, Check } from "lucide-react";
 import { TemplateModern, TemplateProfessional, TemplateMinimalist } from "../components/ResumeTemplates";
+import { colorThemes, fontThemes, getThemeStyle, getFontStyle } from "../utils/templateThemes";
 
 export default function ResumeBuilder() {
     const [formData, setFormData] = useState({
@@ -43,11 +44,16 @@ export default function ResumeBuilder() {
     };
 
     const templates = [
-        { id: "modern", name: "Modern", component: TemplateModern, color: "bg-slate-900" },
-        { id: "professional", name: "Professional", component: TemplateProfessional, color: "bg-white border-2 border-gray-200" },
-        { id: "minimalist", name: "Minimalist", component: TemplateMinimalist, color: "bg-gray-50" }
+        { id: "modern", name: "Modern Sidebar", component: TemplateModern },
+        { id: "professional", name: "Professional Classic", component: TemplateProfessional },
+        { id: "minimalist", name: "Clean Minimalist", component: TemplateMinimalist },
     ];
 
+    const [activeTheme, setActiveTheme] = useState(colorThemes[0].id);
+    const [activeFont, setActiveFont] = useState(fontThemes[0].id);
+
+    const currentTheme = getThemeStyle(activeTheme);
+    const currentFont = getFontStyle(activeFont);
     const SelectedTemplateComponent = templates.find(t => t.id === selectedTemplate)?.component || TemplateModern;
 
     return (
@@ -62,25 +68,22 @@ export default function ResumeBuilder() {
                             <h2 className="text-xl font-bold">Editor</h2>
                         </div>
 
-                        {/* Template Selector */}
-                        <div className="mb-8">
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Choose Template</label>
+                        {/* Layout Selector */}
+                        <div className="mb-6">
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">1. Choose Layout</label>
                             <div className="grid grid-cols-3 gap-3">
                                 {templates.map((template) => (
                                     <button
                                         key={template.id}
                                         onClick={() => setSelectedTemplate(template.id)}
-                                        className={`group relative h-20 rounded-lg overflow-hidden border-2 transition-all ${selectedTemplate === template.id
-                                                ? "border-blue-600 ring-2 ring-blue-600 ring-offset-2 dark:ring-offset-slate-800"
-                                                : "border-slate-200 dark:border-slate-700 hover:border-blue-400"
+                                        className={`group relative p-2 rounded-lg border-2 transition-all text-sm font-medium ${selectedTemplate === template.id
+                                                ? "border-blue-600 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
+                                                : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:text-slate-300"
                                             }`}
                                     >
-                                        <div className={`w-full h-full ${template.color}`}></div>
-                                        <div className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-[10px] py-1 text-center backdrop-blur-sm">
-                                            {template.name}
-                                        </div>
+                                        {template.name}
                                         {selectedTemplate === template.id && (
-                                            <div className="absolute top-1 right-1 bg-blue-600 text-white rounded-full p-0.5">
+                                            <div className="absolute top-1 right-1 text-blue-600 dark:text-blue-400">
                                                 <Check className="w-3 h-3" />
                                             </div>
                                         )}
@@ -88,6 +91,47 @@ export default function ResumeBuilder() {
                                 ))}
                             </div>
                         </div>
+
+                        {/* Style Selector */}
+                        <div className="mb-8">
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">2. Choose Style</label>
+                            <div className="space-y-4">
+                                <div>
+                                    <span className="text-xs text-slate-500 mb-2 block uppercase tracking-wider">Color Theme</span>
+                                    <div className="flex flex-wrap gap-2">
+                                        {colorThemes.map((t) => (
+                                            <button
+                                                key={t.id}
+                                                onClick={() => setActiveTheme(t.id)}
+                                                className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${activeTheme === t.id ? 'ring-2 ring-offset-2 ring-blue-500 border-white' : 'border-slate-200'}`}
+                                                style={{ backgroundColor: t.primary }}
+                                                title={t.name}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <span className="text-xs text-slate-500 mb-2 block uppercase tracking-wider">Typography</span>
+                                    <div className="flex flex-wrap gap-2">
+                                        {fontThemes.map((f) => (
+                                            <button
+                                                key={f.id}
+                                                onClick={() => setActiveFont(f.id)}
+                                                className={`px-3 py-1 rounded text-xs border transition-colors ${activeFont === f.id
+                                                        ? "bg-slate-800 text-white border-slate-800 dark:bg-white dark:text-slate-900"
+                                                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600"
+                                                    }`}
+                                            >
+                                                {f.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr className="my-6 border-slate-100 dark:border-slate-700" />
 
                         {/* Personal Info */}
                         <div className="space-y-4">
@@ -239,7 +283,9 @@ export default function ResumeBuilder() {
                                 </div>
                                 <div>
                                     <h2 className="font-bold">Live Preview</h2>
-                                    <p className="text-xs text-slate-400">Real-time updates</p>
+                                    <p className="text-xs text-slate-400">
+                                        {templates.find(t => t.id === selectedTemplate)?.name} • {colorThemes.find(t => t.id === activeTheme)?.name}
+                                    </p>
                                 </div>
                             </div>
                             <button
@@ -255,7 +301,11 @@ export default function ResumeBuilder() {
                             <div className="overflow-auto max-h-[calc(100vh-140px)] custom-scrollbar">
                                 <div className="min-w-[800px] flex justify-center p-8">
                                     <div ref={componentRef} className="shadow-2xl transition-all origin-top w-full max-w-[210mm]">
-                                        <SelectedTemplateComponent data={formData} />
+                                        <SelectedTemplateComponent
+                                            data={formData}
+                                            theme={currentTheme}
+                                            font={currentFont}
+                                        />
                                     </div>
                                 </div>
                             </div>
