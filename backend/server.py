@@ -5,13 +5,14 @@ import re
 import uuid
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException, Depends, Request, Query
+from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException, Depends, Request, Query, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import BaseModel, Field, EmailStr
 import nltk
 import PyPDF2
 import docx
@@ -24,6 +25,8 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 # Use the project's db helper (this file is untouched)
 from app.db import get_db
+# Import auth helper
+from app.auth import Token, create_access_token, get_password_hash, verify_password, ACCESS_TOKEN_EXPIRE_MINUTES, get_current_user
 
 # Rate limiting imports
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -109,6 +112,15 @@ app.add_middleware(
 )
 
 # ---------- Models ----------
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    email: Optional[EmailStr] = None
+
+class UserResponse(BaseModel):
+    username: str
+    email: Optional[str] = None
+
 class AnalysisResult(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     match_percentage: float
@@ -267,23 +279,31 @@ async def analyze_with_ai(resume_text: str, job_description: str, target_job_tit
             print(f"DEBUG: Model listing failed: {e}")
         
         prompt = f"""
-Analyze the following resume against the job description and provide a detailed assessment in JSON.
+You are an expert AI Resume Evaluator and ATS (Applicant Tracking System) Specialist.
+Analyze the following resume against the job description.
 
 TARGET JOB TITLE: {target_job_title}
-RESUME:
-{resume_text[:2000]}...
-JOB DESCRIPTION:
-{job_description[:2000]}...
 
-JSON FORMAT:
+RESUME:
+{resume_text[:3000]}...
+
+JOB DESCRIPTION:
+{job_description[:3000]}...
+
+Evaluate specifically for:
+1. Keyword match (Hard/Soft skills).
+2. ATS Formatting (readability, standard sections, lack of graphics/tables).
+3. Quantification of achievements (Use of numbers, %, $, metrics).
+
+Return a JSON with this EXACT structure:
 {{
-  "match_percentage": <0-100>,
+  "match_percentage": <number 0-100>,
   "matched_skills": ["skill1", "skill2"],
   "missing_skills": ["skill1", "skill2"],
-  "recommendations": ["rec1", "rec2"],
-  "analysis_summary": "2-3 sentence summary",
-  "ats_compatibility_score": <number 0-100>,
-  "quantification_feedback": ["feedback1", "feedback2"]
+  "recommendations": ["Actionable specific advice 1", "Actionable advice 2"],
+  "analysis_summary": "Concise 2-3 sentence professional summary of the fit.",
+  "ats_compatibility_score": <number 0-100 based on formatting/structure/keywords>,
+  "quantification_feedback": ["Specific advice on where to add numbers/metrics"]
 }}
 """
         response = client.models.generate_content(model="gemini-1.5-flash", contents=prompt)
@@ -342,29 +362,40 @@ JSON FORMAT:
             if not lines:
                 return 20.0
             headings = 0
-            for keyword in ("experience", "education", "skills", "contact", "summary", "projects"):
-                for l in lines[:30]:
-                    if keyword in l.lower():
-                        headings += 1
-                        break
-            headings_score = min(1.0, headings / 4.0)
-            bullet_like = sum(1 for l in lines if l.startswith(("-", "*", "•")) or re.match(r"^\d+[\).\s]", l))
+            # More extensive keyword list for sections
+            section_keywords = ("experience", "work history", "employment", "education", "qualification", 
+                               "skills", "technologies", "projects", "certifications", "summary", "profile", "contact")
+            for l in lines[:40]:
+                if any(k in l.lower() for k in section_keywords):
+                    headings += 1
+            headings_score = min(1.0, headings / 5.0) # Expect at least 5 main sections
+            
+            bullet_like = sum(1 for l in lines if l.startswith(("-", "*", "•", "➢", ">")) or re.match(r"^\d+[\).\s]", l))
             bullet_fraction = bullet_like / max(1, len(lines))
-            bullet_score = min(1.0, bullet_fraction * 2.0)
+            bullet_score = min(1.0, bullet_fraction * 2.5) # Boosted weight for bullets
+            
             year_matches = re.findall(r"\b(19|20)\d{2}\b", txt)
             year_score = min(1.0, len(set(year_matches)) / 3.0)
-            combined = (0.5 * headings_score) + (0.35 * bullet_score) + (0.15 * year_score)
+            
+            # Simple check for contact info (email/phone)
+            has_email = 1.0 if re.search(r"[^@]+@[^@]+\.[^@]+", txt) else 0.0
+            has_phone = 1.0 if re.search(r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}", txt) else 0.0
+            contact_score = (has_email + has_phone) / 2.0
+
+            combined = (0.4 * headings_score) + (0.3 * bullet_score) + (0.1 * year_score) + (0.2 * contact_score)
             return float(max(0.0, min(100.0, round(combined * 100.0))))
 
         formatting_sc = formatting_score_from_text(resume_text)
 
-        ats_raw = (0.6 * score) + (0.4 * formatting_sc)
+        # ATS score is heavily weighted on formatting in fallback
+        ats_raw = (0.7 * formatting_sc) + (0.3 * score)
         ats = float(max(0, min(100, round(ats_raw))))
 
         recommendations = [
-            "Add clear headings: Experience, Education, Skills, Contact.",
-            "Use bullet points and include dates for roles.",
-            "Add measurable results (numbers, % improvements) for key achievements.",
+            "Add clear headings: Experience, Education, Skills, Projects.",
+            "Use standard bullet points for readability.",
+            "Quantify achievements with numbers (e.g., 'Improved X by Y%').",
+            "Ensure contact information is easy to find."
         ]
 
         return {
@@ -374,7 +405,7 @@ JSON FORMAT:
             "recommendations": recommendations,
             "analysis_summary": f"Fallback analysis: basic similarity {score:.1f}%",
             "ats_compatibility_score": ats,
-            "quantification_feedback": ["Consider adding measurable metrics to 2-3 accomplishments."],
+            "quantification_feedback": ["Consider adding measurable metrics to 2-3 accomplishments to increase impact."],
         }
 
 # ---------- Routes ----------
@@ -382,6 +413,51 @@ JSON FORMAT:
 @api.get("/")
 async def root():
     return {"message": "AI Resume & Job Matcher API"}
+
+# --------- Auth Routes ----------
+@api.post("/auth/register", response_model=UserResponse)
+async def register(user: UserCreate):
+    db_local = get_db()
+    if db_local is None:
+        raise HTTPException(status_code=503, detail="Database service unavailable")
+    
+    existing_user = await db_local.users.find_one({"username": user.username})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username already registered")
+    
+    hashed_pw = get_password_hash(user.password)
+    user_doc = {
+        "username": user.username,
+        "hashed_password": hashed_pw,
+        "email": user.email,
+        "created_at": datetime.now(timezone.utc)
+    }
+    await db_local.users.insert_one(user_doc)
+    return UserResponse(username=user.username, email=user.email)
+
+@api.post("/auth/login", response_model=Token)
+async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    db_local = get_db()
+    if db_local is None:
+        raise HTTPException(status_code=503, detail="Database service unavailable")
+
+    user = await db_local.users.find_one({"username": form_data.username})
+    if not user or not verify_password(form_data.password, user["hashed_password"]):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user["username"]}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@api.get("/auth/me", response_model=UserResponse)
+async def read_users_me(current_user: dict = Depends(get_current_user)):
+    return UserResponse(username=current_user["username"], email=current_user.get("email"))
 
 # --------- Upload Handler ----------
 @api.post("/upload-resume", response_model=Dict[str, str])

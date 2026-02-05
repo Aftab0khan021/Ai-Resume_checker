@@ -1,7 +1,7 @@
-// src/App.js
 import React, { useState, useEffect } from "react";
 import "./App.css";
 import axios from "axios";
+import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import {
   Upload,
   Target,
@@ -10,6 +10,10 @@ import {
   Clock,
   Loader2,
   ClipboardCopy,
+  FileText,
+  Printer,
+  LogOut,
+  User
 } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { Toaster } from "./components/ui/toaster";
@@ -32,11 +36,11 @@ import ResultsTab from "./components/ui/sections/ResultsTab";
 import HistoryTab from "./components/ui/sections/HistoryTab";
 
 import ErrorBoundary from "./components/ErrorBoundary";
+import { AuthProvider, useAuth } from './context/AuthContext';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import ResumeBuilder from './pages/ResumeBuilder';
 
-/**
- * NOTE:
- * - Your backend base URL (render) — keep this correct for your deployment.
- */
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || "http://localhost:8000/api",
   timeout: 60000,
@@ -45,7 +49,6 @@ const api = axios.create({
 api.interceptors.response.use(
   (r) => r,
   async (error) => {
-    // simple single-retry logic for 503s (keep previous behavior)
     if (error?.response?.status === 503 && !error.config.__retried) {
       error.config.__retried = true;
       await new Promise((res) => setTimeout(res, 1500));
@@ -55,7 +58,6 @@ api.interceptors.response.use(
   }
 );
 
-// Format backend error payloads (Pydantic detail arrays, strings, objects)
 function formatServerDetail(payload) {
   if (!payload && payload !== 0) return "";
   if (typeof payload === "string") return payload;
@@ -83,19 +85,15 @@ function formatServerDetail(payload) {
   return String(payload);
 }
 
-/**
- * Heuristics: check a 422/400 error payload for a missing query param 'func'.
- * Returns true if the server detail mentions query.func or 'func' in locs/messages.
- */
 function serverWantsFunc(detail) {
   if (!detail) return false;
   const text = typeof detail === "string" ? detail : JSON.stringify(detail);
   if (!text) return false;
-  // look for "query","func" in pydantic loc or any 'func' mention
   return text.includes('"func"') || text.includes("query.func") || /"loc":\s*\[.*"query".*"func".*\]/.test(text) || /func/.test(text);
 }
 
-function App() {
+// Ensure the Home component is defined properly for the routing
+function Home() {
   const [resumeText, setResumeText] = useState("");
   const [resumeFile, setResumeFile] = useState(null);
   const [jobDescription, setJobDescription] = useState("");
@@ -118,8 +116,6 @@ function App() {
     setAnalysis(null);
   };
 
-  // If user switches to analyze and had uploaded a file but no extracted text,
-  // auto-upload once to get resume text (keeps previous behavior).
   useEffect(() => {
     let cancelled = false;
     const autoUploadIfNeeded = async () => {
@@ -159,7 +155,6 @@ function App() {
     };
   }, [activeTab, resumeFile, resumeText, toast]);
 
-  // Main analysis flow: attempt analyze; if server requires func, retry once with ?func=match
   const handleAnalysis = async () => {
     try {
       if (!resumeFile && !resumeText?.trim()) {
@@ -176,7 +171,6 @@ function App() {
 
       setLoadingAnalyze(true);
 
-      // If file present but no text, upload it now
       let finalResumeText = resumeText;
       if (resumeFile && !finalResumeText.trim()) {
         const formData = new FormData();
@@ -200,21 +194,17 @@ function App() {
         }
       }
 
-      // Try POSTing to /analyze normally
       const payload = {
         resume_text: finalResumeText,
         job_description: jobDescription,
         target_job_title: targetJobTitle,
       };
 
-      // Debug log: show the payload being sent (helps track invalid JSON issues)
       console.log("ANALYZE: sending payload:", payload);
 
       let didRetryWithFunc = false;
 
-      // ensure we always send JSON string body (avoid accidental non-JSON sends)
       const doAnalyzeRequest = async (urlSuffix = "") => {
-        // stringify explicitly and set header
         const bodyString = JSON.stringify(payload);
         return api.post(`/analyze${urlSuffix}`, bodyString, {
           timeout: 60000,
@@ -232,22 +222,14 @@ function App() {
           setActiveTab("results");
           return;
         } else {
-          // Unexpected payload type from server
           toast({ variant: "destructive", title: "Analysis Failed", description: "Unexpected response from analysis endpoint." });
           return;
         }
       } catch (err) {
-        // If server wants a query param 'func', retry once with ?func=match
         const status = err?.response?.status;
         const respData = err?.response?.data;
         console.error("Analyze API error:", err?.response || err);
-        console.groupCollapsed("ANALYZE ERROR DEBUG");
-        console.log("status:", status);
-        console.log("headers:", err?.response?.headers);
-        console.log("body:", respData);
-        console.groupEnd();
 
-        // If server indicates it needs func in the query (422 / pydantic detail), retry with ?func=match
         if (!didRetryWithFunc && status && (status === 422 || status === 400) && serverWantsFunc(respData)) {
           didRetryWithFunc = true;
           try {
@@ -261,7 +243,6 @@ function App() {
               return;
             }
           } catch (err2) {
-            // final failure — show readable detail
             console.error("Analyze retry error:", err2?.response || err2);
             const fd = formatServerDetail(err2?.response?.data || err2?.message);
             toast({ variant: "destructive", title: "Analysis Failed", description: fd || "Analysis failed (retry)." });
@@ -270,7 +251,6 @@ function App() {
           }
         }
 
-        // If not a func-related error, or retry exhausted, show the server detail
         const formatted = formatServerDetail(respData || err?.message);
         toast({ variant: "destructive", title: "Analysis Failed", description: formatted || "Analysis endpoint failed." });
         setActiveTab("analyze");
@@ -336,121 +316,178 @@ function App() {
   const navButtonClasses = "w-full sm:flex-1 gap-2 transform transition-transform duration-150 active:scale-95";
 
   return (
-    <ErrorBoundary>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50">
-          <div className="w-full max-w-none px-4 sm:px-6 py-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="p-2 bg-indigo-600 rounded-lg">
-                <Brain className="w-6 h-6 text-white" />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-xl font-bold text-slate-900">AI Resume Matcher</h1>
-                <p className="text-sm text-slate-600">Smart Resume & Job Description Analysis</p>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <main className="w-full max-w-none px-4 sm:px-6 py-8">
-          <div className="flex flex-wrap gap-2 mb-8 bg-white/60 p-2 rounded-xl backdrop-blur-sm">
-            <Button variant={activeTab === "upload" ? "default" : "ghost"} onClick={() => setActiveTab("upload")} className={navButtonClasses}>
-              <Upload className="w-4 h-4" />
-              Upload Resume
-            </Button>
-            <Button variant={activeTab === "analyze" ? "default" : "ghost"} onClick={() => setActiveTab("analyze")} className={navButtonClasses}>
-              <Target className="w-4 h-4" />
-              Analyze Match
-            </Button>
-            <Button variant={activeTab === "results" ? "default" : "ghost"} onClick={() => setActiveTab("results")} className={navButtonClasses} disabled={!analysis}>
-              <BarChart3 className="w-4 h-4" />
-              View Results
-            </Button>
-            <Button variant={activeTab === "history" ? "default" : "ghost"} onClick={() => setActiveTab("history")} className={navButtonClasses}>
-              <Clock className="w-4 h-4" />
-              History
-            </Button>
-          </div>
-
-          {activeTab === "upload" && (
-            <UploadTab resumeText={resumeText} setResumeText={setResumeText} setResumeFile={setResumeFile} setActiveTab={setActiveTab} api={api} toast={toast} />
-          )}
-
-          {activeTab === "analyze" && (
-            <AnalyzeTab
-              resumeText={resumeText}
-              setResumeText={setResumeText}
-              jobDescription={jobDescription}
-              setJobDescription={setJobDescription}
-              targetJobTitle={targetJobTitle}
-              setTargetJobTitle={setTargetJobTitle}
-              handleAnalysis={handleAnalysis}
-              loadingAnalyze={loadingAnalyze}
-              handleGenerateSummary={handleGenerateSummary}
-              loadingSummary={loadingSummary}
-            />
-          )}
-
-          {activeTab === "results" && <ResultsTab analysis={analysis} resetApp={resetApp} />}
-
-          {activeTab === "history" && <HistoryTab isActive={activeTab === "history"} api={api} toast={toast} />}
-        </main>
-
-        <Dialog open={isSummaryModalOpen} onOpenChange={setSummaryModalOpen}>
-          <DialogContent className="max-w-2xl h-[70vh]">
-            <DialogHeader>
-              <DialogTitle>AI Generated Summaries</DialogTitle>
-              <DialogDescription>Here are 3 professional summary suggestions based on your resume. Copy your favorite.</DialogDescription>
-            </DialogHeader>
-            <div className="h-full pb-12">
-              <ScrollArea className="h-full pr-6">
-                {loadingSummary ? (
-                  <div className="flex items-center justify-center h-48">
-                    <Loader2 className="w-12 h-12 text-indigo-600 animate-spin" />
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {generatedSummaries.map((summary, idx) => (
-                      <Card key={idx} className="bg-slate-50">
-                        <CardContent className="p-4 flex items-start gap-4">
-                          <p className="text-sm text-slate-800 flex-1">{summary}</p>
-                          <Button variant="ghost" size="icon" onClick={() => copyToClipboard(summary)} className="text-slate-500 hover:text-indigo-600">
-                            <ClipboardCopy className="w-4 h-4" />
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </ScrollArea>
-            </div>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button type="button" variant="secondary">
-                  Close
-                </Button>
-              </DialogClose>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <footer className="bg-slate-900 text-white py-8 mt-16">
-          <div className="w-full max-w-none px-4 sm:px-6 text-center">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <Brain className="w-5 h-5 text-indigo-400" />
-              <span className="font-semibold">AI Resume Matcher</span>
-            </div>
-            <p className="text-slate-400">Powered by advanced AI to help you land your dream job</p>
-            <div className="flex items-center justify-center gap-2 mt-4">
-              <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" alt="Author Avatar" className="w-5 h-5 rounded-full" />
-              <p className="text-xs text-slate-400">Made By Aftab</p>
-            </div>
-          </div>
-        </footer>
-
-        <Toaster />
+    <div className="w-full">
+      <div className="flex flex-wrap gap-2 mb-8 bg-white/60 p-2 rounded-xl backdrop-blur-sm">
+        <Button variant={activeTab === "upload" ? "default" : "ghost"} onClick={() => setActiveTab("upload")} className={navButtonClasses}>
+          <Upload className="w-4 h-4" />
+          Upload Resume
+        </Button>
+        <Button variant={activeTab === "analyze" ? "default" : "ghost"} onClick={() => setActiveTab("analyze")} className={navButtonClasses}>
+          <Target className="w-4 h-4" />
+          Analyze Match
+        </Button>
+        <Button variant={activeTab === "results" ? "default" : "ghost"} onClick={() => setActiveTab("results")} className={navButtonClasses} disabled={!analysis}>
+          <BarChart3 className="w-4 h-4" />
+          View Results
+        </Button>
+        <Button variant={activeTab === "history" ? "default" : "ghost"} onClick={() => setActiveTab("history")} className={navButtonClasses}>
+          <Clock className="w-4 h-4" />
+          History
+        </Button>
       </div>
-    </ErrorBoundary>
+
+      {activeTab === "upload" && (
+        <UploadTab resumeText={resumeText} setResumeText={setResumeText} setResumeFile={setResumeFile} setActiveTab={setActiveTab} api={api} toast={toast} />
+      )}
+
+      {activeTab === "analyze" && (
+        <AnalyzeTab
+          resumeText={resumeText}
+          setResumeText={setResumeText}
+          jobDescription={jobDescription}
+          setJobDescription={setJobDescription}
+          targetJobTitle={targetJobTitle}
+          setTargetJobTitle={setTargetJobTitle}
+          handleAnalysis={handleAnalysis}
+          loadingAnalyze={loadingAnalyze}
+          handleGenerateSummary={handleGenerateSummary}
+          loadingSummary={loadingSummary}
+        />
+      )}
+
+      {activeTab === "results" && <ResultsTab analysis={analysis} resetApp={resetApp} />}
+
+      {activeTab === "history" && <HistoryTab isActive={activeTab === "history"} api={api} toast={toast} />}
+
+      <Dialog open={isSummaryModalOpen} onOpenChange={setSummaryModalOpen}>
+        <DialogContent className="max-w-2xl h-[70vh]">
+          <DialogHeader>
+            <DialogTitle>AI Generated Summaries</DialogTitle>
+            <DialogDescription>Here are 3 professional summary suggestions based on your resume. Copy your favorite.</DialogDescription>
+          </DialogHeader>
+          <div className="h-full pb-12">
+            <ScrollArea className="h-full pr-6">
+              {loadingSummary ? (
+                <div className="flex items-center justify-center h-48">
+                  <Loader2 className="w-12 h-12 text-indigo-600 animate-spin" />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {generatedSummaries.map((summary, idx) => (
+                    <Card key={idx} className="bg-slate-50">
+                      <CardContent className="p-4 flex items-start gap-4">
+                        <p className="text-sm text-slate-800 flex-1">{summary}</p>
+                        <Button variant="ghost" size="icon" onClick={() => copyToClipboard(summary)} className="text-slate-500 hover:text-indigo-600">
+                          <ClipboardCopy className="w-4 h-4" />
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="secondary">
+                Close
+              </Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function Layout({ children }) {
+  const { user, logout, loading } = useAuth();
+
+  if (loading) return <div className="flex justify-center items-center h-screen"><Loader2 className="animate-spin" /></div>;
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 transition-colors duration-300">
+      <nav className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200 dark:border-slate-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <Link to="/" className="flex items-center space-x-2 group">
+              <div className="bg-blue-600 p-2 rounded-lg group-hover:bg-blue-700 transition-colors">
+                <FileText className="h-6 w-6 text-white" />
+              </div>
+              <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">
+                ResumeAI
+              </span>
+            </Link>
+
+            <div className="flex items-center space-x-2 md:space-x-6">
+              <Link to="/resume-builder" className="text-sm font-medium text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 transition-colors flex items-center gap-1">
+                <Printer size={16} /> <span className="hidden sm:inline">Resume Builder</span>
+              </Link>
+              <Link to="/" className="text-sm font-medium text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 transition-colors">
+                Analyze
+              </Link>
+
+              {user ? (
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-medium text-slate-900 dark:text-white flex items-center gap-1">
+                    <User size={16} /> <span className="hidden sm:inline">{user.username}</span>
+                  </span>
+                  <button
+                    onClick={logout}
+                    className="text-sm font-medium text-red-600 hover:text-red-700 dark:text-red-400 flex items-center gap-1"
+                  >
+                    <LogOut size={16} /> <span className="hidden sm:inline">Logout</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Link to="/login" className="text-sm font-medium text-slate-600 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 px-3 py-2">
+                    Login
+                  </Link>
+                  <Link to="/register" className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-full hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20">
+                    Get Started
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {children}
+      </main>
+
+      <Toaster position="bottom-right" theme="system" />
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <ErrorBoundary>
+          <div className="min-h-screen bg-slate-50">
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/resume-builder" element={
+                <Layout>
+                  <ResumeBuilder />
+                </Layout>
+              } />
+              <Route path="/" element={
+                <Layout>
+                  <Home />
+                </Layout>
+              } />
+            </Routes>
+          </div>
+        </ErrorBoundary>
+      </Router>
+      <Toaster />
+    </AuthProvider>
   );
 }
 
