@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { useReactToPrint } from "react-to-print";
-import { Printer, Layout, X, Eye, ChevronLeft, Check, Palette } from "lucide-react";
+import { Printer, Layout, X, Eye, ChevronLeft, Check } from "lucide-react";
 import { TemplateModern, TemplateProfessional, TemplateMinimalist, TemplateCreative, TemplateTimeline } from "../components/ResumeTemplates";
 import { getThemeStyle, getFontStyle } from "../utils/templateThemes";
 
@@ -58,6 +58,7 @@ export default function ResumeBuilder() {
         fullName: "Alex Morgan",
         email: "alex.morgan@example.com",
         phone: "+1 (555) 123-4567",
+        linkedin: "linkedin.com/in/alexmorgan",
         summary: "Results-driven professional with 5+ years of experience in software development and project management. Proven track record of delivering high-quality solutions on time and within budget.",
         experience: [
             { title: "Senior Developer", company: "Tech Solutions Inc.", date: "2020 - Present", desc: "Led a team of 5 developers building a cloud-based CRM. Improved system performance by 40%." },
@@ -66,6 +67,12 @@ export default function ResumeBuilder() {
         education: [
             { degree: "B.S. Computer Science", school: "University of Technology", year: "2018" }
         ],
+        projects: [
+            { title: "E-Commerce Platform", desc: "Built a full-stack e-commerce app with React and Firebase." }
+        ],
+        certifications: "AWS Certified Solutions Architect, Google UX Design",
+        coursework: "Data Structures, Algorithms, Database Management",
+        involvement: "Volunteer Coding Tutor at Code for Good",
         skills: "JavaScript, React, Node.js, Python, Project Management, Agile/Scrum"
     });
 
@@ -83,6 +90,23 @@ export default function ResumeBuilder() {
     });
 
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+
+    // Handle Array Changes (Experience, Projects, Education)
+    const handleArrayChange = (index, field, key, value) => {
+        const newArray = [...formData[field]];
+        newArray[index][key] = value;
+        setFormData({ ...formData, [field]: newArray });
+    };
+
+    const addItem = (field, itemTemplate) => {
+        setFormData({ ...formData, [field]: [...formData[field], itemTemplate] });
+    };
+
+    const removeItem = (field, index) => {
+        const newArray = [...formData[field]];
+        newArray.splice(index, 1);
+        setFormData({ ...formData, [field]: newArray });
+    };
 
     // Handle Template Selection
     const handlePresetSelect = (preset) => {
@@ -113,7 +137,7 @@ export default function ResumeBuilder() {
     // EDIT MODE
     if (viewMode === "edit") {
         return (
-            <div className="container mx-auto p-4 lg:p-8 max-w-4xl">
+            <div className="container mx-auto p-4 lg:p-8 max-w-5xl">
                 <div className="flex justify-between items-center mb-8">
                     <div>
                         <h1 className="text-3xl font-bold text-slate-900">Resume Editor</h1>
@@ -132,19 +156,82 @@ export default function ResumeBuilder() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Form */}
                     <div className="lg:col-span-2 space-y-6">
+                        {/* Personal Info */}
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-lg mb-4">Personal Info</h3>
-                            <div className="grid grid-cols-2 gap-4">
+                            <h3 className="font-bold text-lg mb-4 text-slate-800">Personal Info</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <input name="fullName" value={formData.fullName} onChange={handleChange} placeholder="Full Name" className="p-2 border rounded" />
                                 <input name="email" value={formData.email} onChange={handleChange} placeholder="Email" className="p-2 border rounded" />
                                 <input name="phone" value={formData.phone} onChange={handleChange} placeholder="Phone" className="p-2 border rounded" />
+                                <input name="linkedin" value={formData.linkedin} onChange={handleChange} placeholder="LinkedIn / Website" className="p-2 border rounded" />
                             </div>
                             <textarea name="summary" value={formData.summary} onChange={handleChange} placeholder="Professional Summary" className="w-full mt-4 p-2 border rounded h-24" />
                         </div>
-                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-lg mb-4">Experience & Skills</h3>
-                            <p className="text-sm text-slate-500 mb-2">Edit experience in the preview mode for more control or add generic items here.</p>
-                            <textarea name="skills" value={formData.skills} onChange={handleChange} placeholder="Skills (comma separated)" className="w-full p-2 border rounded" />
+
+                        {/* Experience */}
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
+                            <h3 className="font-bold text-lg mb-2 text-slate-800">Experience</h3>
+                            {formData.experience.map((exp, idx) => (
+                                <div key={idx} className="p-4 border rounded-lg bg-slate-50 space-y-2">
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <input value={exp.title} onChange={(e) => handleArrayChange(idx, 'experience', 'title', e.target.value)} placeholder="Job Title" className="w-full p-2 border rounded bg-white" />
+                                        <input value={exp.company} onChange={(e) => handleArrayChange(idx, 'experience', 'company', e.target.value)} placeholder="Company" className="w-full p-2 border rounded bg-white" />
+                                    </div>
+                                    <input value={exp.date} onChange={(e) => handleArrayChange(idx, 'experience', 'date', e.target.value)} placeholder="Date Range" className="w-full p-2 border rounded bg-white" />
+                                    <textarea value={exp.desc} onChange={(e) => handleArrayChange(idx, 'experience', 'desc', e.target.value)} placeholder="Description" className="w-full p-2 border rounded h-16 bg-white" />
+                                    <button onClick={() => removeItem('experience', idx)} className="text-red-500 text-xs hover:underline">Remove</button>
+                                </div>
+                            ))}
+                            <button onClick={() => addItem('experience', { title: "", company: "", date: "", desc: "" })} className="text-blue-600 text-sm font-medium hover:underline">+ Add Experience</button>
+                        </div>
+
+                        {/* Education */}
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
+                            <h3 className="font-bold text-lg mb-2 text-slate-800">Education</h3>
+                            {formData.education.map((edu, idx) => (
+                                <div key={idx} className="p-4 border rounded-lg bg-slate-50 space-y-2">
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <input value={edu.degree} onChange={(e) => handleArrayChange(idx, 'education', 'degree', e.target.value)} placeholder="Degree" className="w-full p-2 border rounded bg-white" />
+                                        <input value={edu.school} onChange={(e) => handleArrayChange(idx, 'education', 'school', e.target.value)} placeholder="School/University" className="w-full p-2 border rounded bg-white" />
+                                    </div>
+                                    <input value={edu.year} onChange={(e) => handleArrayChange(idx, 'education', 'year', e.target.value)} placeholder="Year" className="w-full p-2 border rounded bg-white" />
+                                    <button onClick={() => removeItem('education', idx)} className="text-red-500 text-xs hover:underline">Remove</button>
+                                </div>
+                            ))}
+                            <button onClick={() => addItem('education', { degree: "", school: "", year: "" })} className="text-blue-600 text-sm font-medium hover:underline">+ Add Education</button>
+                        </div>
+
+                        {/* Projects */}
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
+                            <h3 className="font-bold text-lg mb-2 text-slate-800">Projects</h3>
+                            {formData.projects.map((proj, idx) => (
+                                <div key={idx} className="p-4 border rounded-lg bg-slate-50 space-y-2">
+                                    <input value={proj.title} onChange={(e) => handleArrayChange(idx, 'projects', 'title', e.target.value)} placeholder="Project Title" className="w-full p-2 border rounded bg-white" />
+                                    <textarea value={proj.desc} onChange={(e) => handleArrayChange(idx, 'projects', 'desc', e.target.value)} placeholder="Description" className="w-full p-2 border rounded h-16 bg-white" />
+                                    <button onClick={() => removeItem('projects', idx)} className="text-red-500 text-xs hover:underline">Remove</button>
+                                </div>
+                            ))}
+                            <button onClick={() => addItem('projects', { title: "", desc: "" })} className="text-blue-600 text-sm font-medium hover:underline">+ Add Project</button>
+                        </div>
+
+                        {/* Additional Info: Certifications, Coursework, Invention, Skills */}
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-6">
+                            <div>
+                                <h3 className="font-bold text-lg mb-2 text-slate-800">Certifications</h3>
+                                <textarea name="certifications" value={formData.certifications} onChange={handleChange} placeholder="List your certifications..." className="w-full p-2 border rounded h-16" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-lg mb-2 text-slate-800">Relevant Coursework</h3>
+                                <textarea name="coursework" value={formData.coursework} onChange={handleChange} placeholder="List relevant coursework..." className="w-full p-2 border rounded h-16" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-lg mb-2 text-slate-800">Involvement / Volunteering</h3>
+                                <textarea name="involvement" value={formData.involvement} onChange={handleChange} placeholder="Clubs, volunteering, leadership roles..." className="w-full p-2 border rounded h-16" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-lg mb-2 text-slate-800">Skills</h3>
+                                <textarea name="skills" value={formData.skills} onChange={handleChange} placeholder="Skills (comma separated)" className="w-full p-2 border rounded h-16" />
+                            </div>
                         </div>
                     </div>
 

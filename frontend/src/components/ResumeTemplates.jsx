@@ -16,6 +16,29 @@ const StyleInjector = ({ theme, font }) => (
     `}</style>
 );
 
+// --- HELPER COMPONENT FOR NEW SECTIONS ---
+const SectionBlock = ({ title, content, className, titleClass, contentClass }) => {
+    if (!content || (Array.isArray(content) && content.length === 0)) return null;
+    return (
+        <div className={className}>
+            <h3 className={titleClass}>{title}</h3>
+            {typeof content === "string" ? (
+                <p className={contentClass}>{content}</p>
+            ) : (
+                <div className="space-y-4">
+                    {content.map((item, idx) => (
+                        <div key={idx}>
+                            <h4 className="font-bold">{item.title}</h4>
+                            <p className={contentClass}>{item.desc}</p>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+
 export const TemplateModern = ({ data, theme, font }) => {
     return (
         <div className="flex h-full min-h-[1000px] w-full font-body bg-white text-slate-800">
@@ -27,6 +50,7 @@ export const TemplateModern = ({ data, theme, font }) => {
                     <h1 className="text-3xl font-bold leading-tight uppercase tracking-wider font-heading">{data.fullName}</h1>
                     <p className="mt-4 opacity-90 text-sm">{data.email}</p>
                     <p className="opacity-90 text-sm">{data.phone}</p>
+                    <p className="opacity-90 text-sm">{data.linkedin}</p>
                 </div>
 
                 {data.skills && (
@@ -36,8 +60,8 @@ export const TemplateModern = ({ data, theme, font }) => {
                     </div>
                 )}
 
-                {data.education.length > 0 && (
-                    <div>
+                {data.education && data.education.length > 0 && (
+                    <div className="mb-8">
                         <h3 className="text-lg font-bold uppercase tracking-widest border-b border-white/20 pb-2 mb-4 theme-accent font-heading">Education</h3>
                         <div className="space-y-6">
                             {data.education.map((edu, idx) => (
@@ -50,6 +74,22 @@ export const TemplateModern = ({ data, theme, font }) => {
                         </div>
                     </div>
                 )}
+
+                {/* Sidebar New Sections: Certifications, Coursework */}
+                <SectionBlock
+                    title="Certifications"
+                    content={data.certifications}
+                    className="mb-8"
+                    titleClass="text-lg font-bold uppercase tracking-widest border-b border-white/20 pb-2 mb-4 theme-accent font-heading"
+                    contentClass="text-sm leading-relaxed opacity-90"
+                />
+                <SectionBlock
+                    title="Coursework"
+                    content={data.coursework}
+                    className="mb-8"
+                    titleClass="text-lg font-bold uppercase tracking-widest border-b border-white/20 pb-2 mb-4 theme-accent font-heading"
+                    contentClass="text-sm leading-relaxed opacity-90"
+                />
             </div>
 
             {/* Main Content */}
@@ -61,8 +101,8 @@ export const TemplateModern = ({ data, theme, font }) => {
                     </div>
                 )}
 
-                {data.experience.length > 0 && (
-                    <div>
+                {data.experience && data.experience.length > 0 && (
+                    <div className="mb-8">
                         <h3 className="text-2xl font-bold uppercase theme-text border-b-2 theme-secondary pb-2 mb-4 font-heading">Experience</h3>
                         <div className="space-y-6">
                             {data.experience.map((exp, idx) => (
@@ -76,6 +116,28 @@ export const TemplateModern = ({ data, theme, font }) => {
                                 </div>
                             ))}
                         </div>
+                    </div>
+                )}
+
+                {/* Main Content New Sections: Projects, Involvement */}
+                {data.projects && data.projects.length > 0 && (
+                    <div className="mb-8">
+                        <h3 className="text-2xl font-bold uppercase theme-text border-b-2 theme-secondary pb-2 mb-4 font-heading">Projects</h3>
+                        <div className="space-y-4">
+                            {data.projects.map((proj, idx) => (
+                                <div key={idx} className="bg-slate-50 p-4 rounded-lg">
+                                    <h4 className="text-lg font-bold theme-primary mb-1">{proj.title}</h4>
+                                    <p className="text-sm text-gray-600 leading-relaxed">{proj.desc}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {data.involvement && (
+                    <div className="mb-8">
+                        <h3 className="text-2xl font-bold uppercase theme-text border-b-2 theme-secondary pb-2 mb-4 font-heading">Involvement</h3>
+                        <p className="text-gray-600 leading-relaxed">{data.involvement}</p>
                     </div>
                 )}
             </div>
@@ -93,6 +155,7 @@ export const TemplateProfessional = ({ data, theme, font }) => {
                 <div className="flex justify-center gap-4 text-sm font-medium theme-secondary">
                     {data.email && <span>{data.email}</span>}
                     {data.phone && <span>• {data.phone}</span>}
+                    {data.linkedin && <span>• {data.linkedin}</span>}
                 </div>
             </div>
 
@@ -103,7 +166,7 @@ export const TemplateProfessional = ({ data, theme, font }) => {
                 </div>
             )}
 
-            {data.experience.length > 0 && (
+            {data.experience && data.experience.length > 0 && (
                 <div className="mb-6">
                     <h3 className="text-md font-bold uppercase border-b border-gray-300 mb-4 pb-1 theme-text font-heading">Work Experience</h3>
                     <div className="space-y-5">
@@ -121,28 +184,64 @@ export const TemplateProfessional = ({ data, theme, font }) => {
                 </div>
             )}
 
-            <div className="flex gap-8">
-                {data.education.length > 0 && (
-                    <div className="flex-1">
-                        <h3 className="text-md font-bold uppercase border-b border-gray-300 mb-4 pb-1 theme-text font-heading">Education</h3>
-                        <div className="space-y-4">
-                            {data.education.map((edu, idx) => (
-                                <div key={idx}>
-                                    <h4 className="font-bold theme-primary">{edu.degree}</h4>
-                                    <div className="text-sm theme-secondary">{edu.school}</div>
-                                    <div className="text-sm italic text-gray-500">{edu.year}</div>
-                                </div>
-                            ))}
-                        </div>
+            {data.projects && data.projects.length > 0 && (
+                <div className="mb-6">
+                    <h3 className="text-md font-bold uppercase border-b border-gray-300 mb-4 pb-1 theme-text font-heading">Key Projects</h3>
+                    <div className="space-y-4">
+                        {data.projects.map((proj, idx) => (
+                            <div key={idx}>
+                                <h4 className="font-bold text-md theme-primary">{proj.title}</h4>
+                                <p className="text-sm leading-relaxed">{proj.desc}</p>
+                            </div>
+                        ))}
                     </div>
-                )}
+                </div>
+            )}
 
-                {data.skills && (
-                    <div className="flex-1">
-                        <h3 className="text-md font-bold uppercase border-b border-gray-300 mb-4 pb-1 theme-text font-heading">Skills</h3>
-                        <p className="text-sm leading-7">{data.skills}</p>
-                    </div>
-                )}
+            <div className="flex gap-8">
+                <div className="flex-1 space-y-6">
+                    {data.education && data.education.length > 0 && (
+                        <div>
+                            <h3 className="text-md font-bold uppercase border-b border-gray-300 mb-4 pb-1 theme-text font-heading">Education</h3>
+                            <div className="space-y-4">
+                                {data.education.map((edu, idx) => (
+                                    <div key={idx}>
+                                        <h4 className="font-bold theme-primary">{edu.degree}</h4>
+                                        <div className="text-sm theme-secondary">{edu.school}</div>
+                                        <div className="text-sm italic text-gray-500">{edu.year}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {data.certifications && (
+                        <div>
+                            <h3 className="text-md font-bold uppercase border-b border-gray-300 mb-4 pb-1 theme-text font-heading">Certifications</h3>
+                            <p className="text-sm leading-7">{data.certifications}</p>
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex-1 space-y-6">
+                    {data.skills && (
+                        <div>
+                            <h3 className="text-md font-bold uppercase border-b border-gray-300 mb-4 pb-1 theme-text font-heading">Skills</h3>
+                            <p className="text-sm leading-7">{data.skills}</p>
+                        </div>
+                    )}
+                    {data.coursework && (
+                        <div>
+                            <h3 className="text-md font-bold uppercase border-b border-gray-300 mb-4 pb-1 theme-text font-heading">Relevant Coursework</h3>
+                            <p className="text-sm leading-7">{data.coursework}</p>
+                        </div>
+                    )}
+                    {data.involvement && (
+                        <div>
+                            <h3 className="text-md font-bold uppercase border-b border-gray-300 mb-4 pb-1 theme-text font-heading">Involvement</h3>
+                            <p className="text-sm leading-7">{data.involvement}</p>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
@@ -158,12 +257,13 @@ export const TemplateMinimalist = ({ data, theme, font }) => {
                 <div className="flex flex-col gap-1 text-sm theme-secondary">
                     {data.email && <span>{data.email}</span>}
                     {data.phone && <span>{data.phone}</span>}
+                    {data.linkedin && <span>{data.linkedin}</span>}
                 </div>
             </header>
 
             <div className="grid grid-cols-4 gap-8">
                 <div className="col-span-1 space-y-8">
-                    {data.education.length > 0 && (
+                    {data.education && data.education.length > 0 && (
                         <section>
                             <h3 className="font-bold text-xs uppercase tracking-widest mb-4 theme-accent font-heading">Education</h3>
                             <div className="space-y-6">
@@ -184,6 +284,13 @@ export const TemplateMinimalist = ({ data, theme, font }) => {
                             <p className="text-sm leading-6 theme-secondary">{data.skills}</p>
                         </section>
                     )}
+
+                    {data.certifications && (
+                        <section>
+                            <h3 className="font-bold text-xs uppercase tracking-widest mb-4 theme-accent font-heading">Certifications</h3>
+                            <p className="text-sm leading-6 theme-secondary">{data.certifications}</p>
+                        </section>
+                    )}
                 </div>
 
                 <div className="col-span-3 space-y-10">
@@ -194,7 +301,7 @@ export const TemplateMinimalist = ({ data, theme, font }) => {
                         </section>
                     )}
 
-                    {data.experience.length > 0 && (
+                    {data.experience && data.experience.length > 0 && (
                         <section>
                             <h3 className="font-bold text-xs uppercase tracking-widest mb-6 theme-accent font-heading">Experience</h3>
                             <div className="space-y-8">
@@ -209,6 +316,27 @@ export const TemplateMinimalist = ({ data, theme, font }) => {
                                     </div>
                                 ))}
                             </div>
+                        </section>
+                    )}
+
+                    {data.projects && data.projects.length > 0 && (
+                        <section>
+                            <h3 className="font-bold text-xs uppercase tracking-widest mb-6 theme-accent font-heading">Projects</h3>
+                            <div className="space-y-6">
+                                {data.projects.map((proj, idx) => (
+                                    <div key={idx}>
+                                        <h4 className="text-lg font-medium theme-primary mb-1">{proj.title}</h4>
+                                        <p className="text-sm text-gray-600 leading-relaxed max-w-2xl">{proj.desc}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+
+                    {data.involvement && (
+                        <section>
+                            <h3 className="font-bold text-xs uppercase tracking-widest mb-4 theme-accent font-heading">Involvement</h3>
+                            <p className="text-sm leading-relaxed theme-text max-w-2xl">{data.involvement}</p>
                         </section>
                     )}
                 </div>
@@ -229,13 +357,12 @@ export const TemplateCreative = ({ data, theme, font }) => {
                 </div>
 
                 <div className="space-y-6 w-full text-left">
-                    {data.contact && (
-                        <div>
-                            <h3 className="text-xs font-bold uppercase tracking-widest opacity-70 mb-2 border-b border-white/20 pb-1">Contact</h3>
-                            <div className="text-xs break-words">{data.email}</div>
-                            <div className="text-xs">{data.phone}</div>
-                        </div>
-                    )}
+                    <div>
+                        <h3 className="text-xs font-bold uppercase tracking-widest opacity-70 mb-2 border-b border-white/20 pb-1">Contact</h3>
+                        <div className="text-xs break-words">{data.email}</div>
+                        <div className="text-xs">{data.phone}</div>
+                        <div className="text-xs break-words mt-1">{data.linkedin}</div>
+                    </div>
 
                     {data.skills && (
                         <div>
@@ -244,7 +371,20 @@ export const TemplateCreative = ({ data, theme, font }) => {
                         </div>
                     )}
 
-                    {data.education.length > 0 && (
+                    {data.certifications && (
+                        <div>
+                            <h3 className="text-xs font-bold uppercase tracking-widest opacity-70 mb-2 border-b border-white/20 pb-1">Certifications</h3>
+                            <p className="text-xs leading-relaxed">{data.certifications}</p>
+                        </div>
+                    )}
+                    {data.coursework && (
+                        <div>
+                            <h3 className="text-xs font-bold uppercase tracking-widest opacity-70 mb-2 border-b border-white/20 pb-1">Coursework</h3>
+                            <p className="text-xs leading-relaxed">{data.coursework}</p>
+                        </div>
+                    )}
+
+                    {data.education && data.education.length > 0 && (
                         <div>
                             <h3 className="text-xs font-bold uppercase tracking-widest opacity-70 mb-2 border-b border-white/20 pb-1">Education</h3>
                             <div className="space-y-4">
@@ -277,8 +417,8 @@ export const TemplateCreative = ({ data, theme, font }) => {
                     </div>
                 )}
 
-                {data.experience.length > 0 && (
-                    <div>
+                {data.experience && data.experience.length > 0 && (
+                    <div className="mb-8">
                         <h3 className="text-xl font-black uppercase tracking-tighter mb-6 flex items-center gap-3">
                             <span className="theme-text" style={{ color: theme.text }}>Experience</span>
                             <span className="h-px flex-1 bg-slate-200"></span>
@@ -295,6 +435,32 @@ export const TemplateCreative = ({ data, theme, font }) => {
                                 </div>
                             ))}
                         </div>
+                    </div>
+                )}
+
+                {data.projects && data.projects.length > 0 && (
+                    <div className="mb-8">
+                        <h3 className="text-xl font-black uppercase tracking-tighter mb-6 flex items-center gap-3">
+                            <span className="theme-text" style={{ color: theme.text }}>Projects</span>
+                            <span className="h-px flex-1 bg-slate-200"></span>
+                        </h3>
+                        <div className="grid grid-cols-1 gap-8">
+                            {data.projects.map((proj, idx) => (
+                                <div key={idx} className="group">
+                                    <h4 className="text-lg font-bold theme-primary group-hover:translate-x-1 transition-transform" style={{ color: theme.primary }}>{proj.title}</h4>
+                                    <p className="text-sm text-slate-600 leading-relaxed mt-1">{proj.desc}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+                {data.involvement && (
+                    <div className="mb-8">
+                        <h3 className="text-xl font-black uppercase tracking-tighter mb-6 flex items-center gap-3">
+                            <span className="theme-text" style={{ color: theme.text }}>Involvement</span>
+                            <span className="h-px flex-1 bg-slate-200"></span>
+                        </h3>
+                        <p className="text-sm text-slate-600 leading-relaxed">{data.involvement}</p>
                     </div>
                 )}
             </div>
@@ -316,6 +482,7 @@ export const TemplateTimeline = ({ data, theme, font }) => {
                     <div className="flex justify-center gap-2 text-sm theme-secondary font-mono" style={{ color: theme.secondary }}>
                         <span>{data.email}</span>
                         {data.phone && <span> {'//'} {data.phone}</span>}
+                        {data.linkedin && <span> {'//'} {data.linkedin}</span>}
                     </div>
                     {data.summary && (
                         <div className="mt-6 p-4 bg-white shadow-sm rounded-xl border border-slate-200 text-sm leading-relaxed text-center">
@@ -324,7 +491,7 @@ export const TemplateTimeline = ({ data, theme, font }) => {
                     )}
                 </header>
 
-                {data.experience.length > 0 && (
+                {data.experience && data.experience.length > 0 && (
                     <div className="mb-12">
                         <div className="flex items-center gap-4 mb-8">
                             <div className="h-px bg-slate-300 flex-1"></div>
@@ -362,8 +529,27 @@ export const TemplateTimeline = ({ data, theme, font }) => {
                     </div>
                 )}
 
+                {data.projects && data.projects.length > 0 && (
+                    <div className="mb-12">
+                        <div className="flex items-center gap-4 mb-8">
+                            <div className="h-px bg-slate-300 flex-1"></div>
+                            <h3 className="text-center font-bold uppercase tracking-widest text-sm theme-primary" style={{ color: theme.primary }}>Projects</h3>
+                            <div className="h-px bg-slate-300 flex-1"></div>
+                        </div>
+                        <div className="space-y-4">
+                            {data.projects.map((proj, idx) => (
+                                <div key={idx} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                                    <h4 className="font-bold text-md theme-primary" style={{ color: theme.primary }}>{proj.title}</h4>
+                                    <p className="text-sm text-slate-600 mt-1">{proj.desc}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+
                 <div className="grid grid-cols-2 gap-8">
-                    {data.education.length > 0 && (
+                    {data.education && data.education.length > 0 && (
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                             <h3 className="font-bold uppercase text-xs tracking-widest mb-4 theme-accent" style={{ color: theme.accent }}>Education</h3>
                             <div className="space-y-4">
@@ -382,6 +568,20 @@ export const TemplateTimeline = ({ data, theme, font }) => {
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                             <h3 className="font-bold uppercase text-xs tracking-widest mb-4 theme-accent" style={{ color: theme.accent }}>Skills</h3>
                             <p className="text-sm leading-7">{data.skills}</p>
+                        </div>
+                    )}
+                </div>
+                <div className="grid grid-cols-2 gap-8 mt-6">
+                    {data.certifications && (
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                            <h3 className="font-bold uppercase text-xs tracking-widest mb-4 theme-accent" style={{ color: theme.accent }}>Certifications</h3>
+                            <p className="text-sm leading-7">{data.certifications}</p>
+                        </div>
+                    )}
+                    {data.involvement && (
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                            <h3 className="font-bold uppercase text-xs tracking-widest mb-4 theme-accent" style={{ color: theme.accent }}>Involvement</h3>
+                            <p className="text-sm leading-7">{data.involvement}</p>
                         </div>
                     )}
                 </div>
