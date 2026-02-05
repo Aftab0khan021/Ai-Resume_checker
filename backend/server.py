@@ -255,7 +255,7 @@ async def analyze_with_ai(resume_text: str, job_description: str, target_job_tit
         
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(
-            model_name="gemini-2.0-flash-exp",
+            model_name="gemini-2.5-flash",
             system_instruction="You are an expert HR analyst and career counselor specializing in resume-job matching analysis."
         )
 
@@ -611,7 +611,7 @@ async def generate_summary(request: Request, payload: SummaryRequest):
         
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(
-            model_name="gemini-2.0-flash-exp",
+            model_name="gemini-1.5-flash",
             system_instruction="You are an expert resume writer."
         )
 
