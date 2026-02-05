@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo } from "react";
 import { useReactToPrint } from "react-to-print";
 import { Printer, PenTool, Layout, X, Eye, Palette, ChevronLeft } from "lucide-react";
-import { TemplateModern, TemplateProfessional, TemplateMinimalist } from "../components/ResumeTemplates";
+import { TemplateModern, TemplateProfessional, TemplateMinimalist, TemplateCreative, TemplateTimeline } from "../components/ResumeTemplates";
 import { colorThemes, fontThemes, layoutThemes, getThemeStyle, getFontStyle } from "../utils/templateThemes";
 
 // Generate presets locally to ensure availability
@@ -79,8 +79,8 @@ export default function ResumeBuilder() {
         modern: TemplateModern,
         professional: TemplateProfessional,
         minimalist: TemplateMinimalist,
-        creative: TemplateModern, // Fallbacks for now
-        timeline: TemplateProfessional // Fallbacks for now
+        creative: TemplateCreative,
+        timeline: TemplateTimeline
     };
 
     const SelectedTemplateComponent = templates[selectedLayout] || TemplateModern;
@@ -223,26 +223,40 @@ export default function ResumeBuilder() {
                                 <button
                                     key={preset.id}
                                     onClick={() => handlePresetSelect(preset)}
-                                    className="group text-left border rounded-lg overflow-hidden hover:ring-4 ring-blue-500/20 transition-all hover:shadow-xl bg-white"
+                                    className="group text-left border-2 border-slate-200 rounded-xl overflow-hidden hover:border-blue-500 hover:shadow-xl transition-all bg-white flex flex-col h-full"
                                 >
-                                    <div className="h-40 bg-slate-100 relative overflow-hidden flex items-center justify-center">
-                                        {/* Abstract Mini Preview */}
-                                        <div className="w-24 h-32 bg-white shadow-sm border-[0.5px] border-slate-200 p-2 flex flex-col gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity transform group-hover:scale-105 duration-300">
-                                            <div className="h-3 w-full bg-slate-200 rounded-sm" style={{ backgroundColor: preset.previewColor }}></div>
-                                            <div className="h-1.5 w-2/3 bg-slate-100 rounded-sm"></div>
-                                            <div className="h-1.5 w-full bg-slate-100 rounded-sm"></div>
-                                            <div className="mt-2 flex gap-1">
-                                                <div className="w-1/3 h-16 bg-slate-50 rounded-sm"></div>
-                                                <div className="w-2/3 h-16 bg-slate-50 rounded-sm"></div>
+                                    <div className="h-48 bg-slate-100 flex items-center justify-center p-4 relative group-hover:bg-slate-200 transition-colors">
+                                        {/* Abstract Mini Preview Card */}
+                                        <div className="w-24 h-32 bg-white shadow-lg border border-slate-300 p-2 flex flex-col gap-2 transform group-hover:scale-105 transition-transform duration-300">
+                                            {/* Header Bar */}
+                                            <div className="h-4 w-full rounded-sm opacity-90" style={{ backgroundColor: preset.previewColor || '#3b82f6' }}></div>
+                                            {/* Body Text Mockups */}
+                                            <div className="space-y-1.5">
+                                                <div className="h-2 w-3/4 bg-slate-200 rounded-sm"></div>
+                                                <div className="h-2 w-full bg-slate-200 rounded-sm"></div>
+                                                <div className="h-2 w-5/6 bg-slate-200 rounded-sm"></div>
+                                            </div>
+                                            {/* Split Columns Mockup */}
+                                            <div className="mt-auto flex gap-1.5 h-8">
+                                                <div className="w-1/3 bg-slate-100 rounded-sm"></div>
+                                                <div className="w-2/3 bg-slate-100 rounded-sm"></div>
+                                            </div>
+                                        </div>
+
+                                        {/* Selection Indicator */}
+                                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <div className="bg-blue-600 text-white p-1 rounded-full shadow-lg">
+                                                <Check size={12} />
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="p-3 border-t">
-                                        <h3 className="font-bold text-slate-900 text-sm truncate">{preset.name}</h3>
-                                        <p className="text-xs text-slate-500 flex justify-between mt-1">
-                                            <span className="capitalize">{preset.layoutId}</span>
-                                            <span className="opacity-50">{preset.fontId}</span>
-                                        </p>
+
+                                    <div className="p-4 bg-white border-t border-slate-100 flex-1">
+                                        <h3 className="font-bold text-slate-900 text-sm mb-1 leading-tight">{preset.name}</h3>
+                                        <div className="flex flex-wrap gap-1 mt-2">
+                                            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{preset.layoutId}</span>
+                                            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{preset.fontId}</span>
+                                        </div>
                                     </div>
                                 </button>
                             ))}
