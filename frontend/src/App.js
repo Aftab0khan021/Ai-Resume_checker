@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
 import axios from "axios";
-import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import {
   Upload,
   Target,
@@ -457,6 +457,20 @@ function Layout({ children }) {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </main>
+
+      <footer className="bg-slate-900 text-white py-8 mt-16">
+        <div className="w-full max-w-none px-4 sm:px-6 text-center">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Brain className="w-5 h-5 text-indigo-400" />
+            <span className="font-semibold">AI Resume Matcher</span>
+          </div>
+          <p className="text-slate-400">Powered by advanced AI to help you land your dream job</p>
+          <div className="flex items-center justify-center gap-2 mt-4">
+            <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" alt="Author Avatar" className="w-5 h-5 rounded-full" />
+            <p className="text-xs text-slate-400">Made By Aftab</p>
+          </div>
+        </div>
+      </footer>
 
       <Toaster position="bottom-right" theme="system" />
     </div>
