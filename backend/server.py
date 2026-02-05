@@ -250,12 +250,11 @@ async def analyze_with_ai(resume_text: str, job_description: str, target_job_tit
         if not api_key:
             raise RuntimeError("GEMINI_API_KEY not configured")
 
-        # Use google.generativeai directly
-        import google.generativeai as genai
+        # Use google.genai (new SDK)
+        from google import genai
         
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-pro")
-
+        client = genai.Client(api_key=api_key)
+        
         prompt = f"""
 Analyze the following resume against the job description and provide a detailed assessment in JSON.
 
@@ -276,7 +275,7 @@ JSON FORMAT:
   "quantification_feedback": ["feedback1", "feedback2"]
 }}
 """
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(model="gemini-1.5-flash", contents=prompt)
         text = response.text
 
         # try to extract JSON object from model output
@@ -604,10 +603,9 @@ async def generate_summary(request: Request, payload: SummaryRequest):
         if not api_key:
             raise RuntimeError("GEMINI_API_KEY not configured")
 
-        import google.generativeai as genai
+        from google import genai
         
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-pro")
+        client = genai.Client(api_key=api_key)
 
         prompt = f"""
 Based on the following resume text, write 3 professional, high-impact summary statements for a job application.
@@ -616,7 +614,7 @@ Return them as a JSON list in the format: {{ "summaries": ["summary1", "summary2
 RESUME TEXT:
 {resume_text[:2000]}...
 """
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(model="gemini-1.5-flash", contents=prompt)
         text = response.text
         s, e = text.find("{"), text.rfind("}") + 1
         if s != -1 and e != -1:
