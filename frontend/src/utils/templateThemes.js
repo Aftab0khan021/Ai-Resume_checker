@@ -3,6 +3,7 @@ export const colorThemes = [
     { id: "emerald", name: "Emerald Green", primary: "#064e3b", secondary: "#065f46", accent: "#10b981", text: "#064e3b", bg: "#ecfdf5" },
     { id: "blue", name: "Corporate Blue", primary: "#1e3a8a", secondary: "#1d4ed8", accent: "#60a5fa", text: "#172554", bg: "#eff6ff" },
     { id: "crimson", name: "Crimson Red", primary: "#881337", secondary: "#9f1239", accent: "#f43f5e", text: "#4c0519", bg: "#fff1f2" },
+    { id: "red", name: "Bold Red", primary: "#991b1b", secondary: "#dc2626", accent: "#f87171", text: "#7f1d1d", bg: "#fef2f2" },
     { id: "violet", name: "Creative Violet", primary: "#4c1d95", secondary: "#6d28d9", accent: "#8b5cf6", text: "#2e1065", bg: "#f5f3ff" },
     { id: "orange", name: "Modern Orange", primary: "#ea580c", secondary: "#c2410c", accent: "#f97316", text: "#431407", bg: "#fff7ed" },
     { id: "teal", name: "Teal Teal", primary: "#115e59", secondary: "#0d9488", accent: "#2dd4bf", text: "#134e4a", bg: "#f0fdfa" },

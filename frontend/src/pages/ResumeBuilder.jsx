@@ -4,8 +4,9 @@ import { Printer, Layout, X, Eye, ChevronLeft, Check } from "lucide-react";
 import { TemplateModern, TemplateProfessional, TemplateMinimalist, TemplateCreative, TemplateTimeline } from "../components/ResumeTemplates";
 import { getThemeStyle, getFontStyle } from "../utils/templateThemes";
 
-// MANUAL PRESET DEFINITIONS - 5 Distinct Designs per User Request
+// MANUAL PRESET DEFINITIONS - Expanded Collection
 const manualPresets = [
+    // MODERN CATEGORY
     {
         id: "modern-1",
         name: "Modern Sidebar",
@@ -16,6 +17,26 @@ const manualPresets = [
         fontId: "sans"
     },
     {
+        id: "modern-2",
+        name: "Modern Ocean",
+        layoutId: "modern",
+        description: "Calming blue tones with modern structure",
+        previewColor: "#0891b2", // Cyan
+        themeId: "cyan",
+        fontId: "sans"
+    },
+    {
+        id: "modern-3",
+        name: "Modern Tech",
+        layoutId: "modern",
+        description: "Tech-focused with indigo accents",
+        previewColor: "#6366f1", // Indigo
+        themeId: "indigo",
+        fontId: "sans"
+    },
+
+    // PROFESSIONAL CATEGORY
+    {
         id: "professional-1",
         name: "Professional Classic",
         layoutId: "professional",
@@ -24,6 +45,26 @@ const manualPresets = [
         themeId: "slate",
         fontId: "serif"
     },
+    {
+        id: "professional-2",
+        name: "Professional Executive",
+        layoutId: "professional",
+        description: "Elegant serif design for senior positions",
+        previewColor: "#1e293b", // Dark Slate
+        themeId: "slate",
+        fontId: "serif"
+    },
+    {
+        id: "professional-3",
+        name: "Professional Corporate",
+        layoutId: "professional",
+        description: "Conservative design for finance and law",
+        previewColor: "#334155", // Slate
+        themeId: "slate",
+        fontId: "sans"
+    },
+
+    // CREATIVE CATEGORY
     {
         id: "creative-1",
         name: "Creative Studio",
@@ -34,6 +75,26 @@ const manualPresets = [
         fontId: "sans"
     },
     {
+        id: "creative-2",
+        name: "Creative Bold",
+        layoutId: "creative",
+        description: "Eye-catching design for designers and artists",
+        previewColor: "#dc2626", // Red
+        themeId: "red",
+        fontId: "sans"
+    },
+    {
+        id: "creative-3",
+        name: "Creative Vibrant",
+        layoutId: "creative",
+        description: "Energetic pink tones for creative roles",
+        previewColor: "#db2777", // Pink
+        themeId: "pink",
+        fontId: "sans"
+    },
+
+    // TIMELINE CATEGORY
+    {
         id: "timeline-1",
         name: "Career Timeline",
         layoutId: "timeline",
@@ -43,6 +104,17 @@ const manualPresets = [
         fontId: "sans"
     },
     {
+        id: "timeline-2",
+        name: "Timeline Journey",
+        layoutId: "timeline",
+        description: "Story-driven timeline layout",
+        previewColor: "#0284c7", // Sky Blue
+        themeId: "blue",
+        fontId: "sans"
+    },
+
+    // MINIMALIST CATEGORY
+    {
         id: "minimalist-1",
         name: "Clean Minimalist",
         layoutId: "minimalist",
@@ -50,6 +122,24 @@ const manualPresets = [
         previewColor: "#000000", // Black
         themeId: "slate",
         fontId: "mono"
+    },
+    {
+        id: "minimalist-2",
+        name: "Minimalist Elegant",
+        layoutId: "minimalist",
+        description: "Refined simplicity with serif fonts",
+        previewColor: "#374151", // Gray
+        themeId: "slate",
+        fontId: "serif"
+    },
+    {
+        id: "minimalist-3",
+        name: "Minimalist Modern",
+        layoutId: "minimalist",
+        description: "Contemporary minimal with subtle color",
+        previewColor: "#0891b2", // Cyan
+        themeId: "cyan",
+        fontId: "sans"
     }
 ];
 
@@ -262,8 +352,10 @@ export default function ResumeBuilder() {
                             <div className="p-4 border-b flex gap-2 overflow-x-auto">
                                 <button onClick={() => setFilterCategory("all")} className={`px-4 py-2 rounded-full text-sm font-medium ${filterCategory === "all" ? "bg-slate-900 text-white" : "bg-white border text-slate-600"}`}>All Designs</button>
                                 <button onClick={() => setFilterCategory("modern")} className={`px-4 py-2 rounded-full text-sm font-medium ${filterCategory === "modern" ? "bg-slate-900 text-white" : "bg-white border text-slate-600"}`}>Modern</button>
+                                <button onClick={() => setFilterCategory("professional")} className={`px-4 py-2 rounded-full text-sm font-medium ${filterCategory === "professional" ? "bg-slate-900 text-white" : "bg-white border text-slate-600"}`}>Professional</button>
                                 <button onClick={() => setFilterCategory("creative")} className={`px-4 py-2 rounded-full text-sm font-medium ${filterCategory === "creative" ? "bg-slate-900 text-white" : "bg-white border text-slate-600"}`}>Creative</button>
                                 <button onClick={() => setFilterCategory("timeline")} className={`px-4 py-2 rounded-full text-sm font-medium ${filterCategory === "timeline" ? "bg-slate-900 text-white" : "bg-white border text-slate-600"}`}>Timeline</button>
+                                <button onClick={() => setFilterCategory("minimalist")} className={`px-4 py-2 rounded-full text-sm font-medium ${filterCategory === "minimalist" ? "bg-slate-900 text-white" : "bg-white border text-slate-600"}`}>Minimalist</button>
                             </div>
 
                             {/* Grid */}
