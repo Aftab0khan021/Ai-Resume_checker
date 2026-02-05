@@ -226,21 +226,79 @@ export default function ResumeBuilder() {
                                     className="group text-left border-2 border-slate-200 rounded-xl overflow-hidden hover:border-blue-500 hover:shadow-xl transition-all bg-white flex flex-col h-full"
                                 >
                                     <div className="h-48 bg-slate-100 flex items-center justify-center p-4 relative group-hover:bg-slate-200 transition-colors">
-                                        {/* Abstract Mini Preview Card */}
-                                        <div className="w-24 h-32 bg-white shadow-lg border border-slate-300 p-2 flex flex-col gap-2 transform group-hover:scale-105 transition-transform duration-300">
-                                            {/* Header Bar */}
-                                            <div className="h-4 w-full rounded-sm opacity-90" style={{ backgroundColor: preset.previewColor || '#3b82f6' }}></div>
-                                            {/* Body Text Mockups */}
-                                            <div className="space-y-1.5">
-                                                <div className="h-2 w-3/4 bg-slate-200 rounded-sm"></div>
-                                                <div className="h-2 w-full bg-slate-200 rounded-sm"></div>
-                                                <div className="h-2 w-5/6 bg-slate-200 rounded-sm"></div>
-                                            </div>
-                                            {/* Split Columns Mockup */}
-                                            <div className="mt-auto flex gap-1.5 h-8">
-                                                <div className="w-1/3 bg-slate-100 rounded-sm"></div>
-                                                <div className="w-2/3 bg-slate-100 rounded-sm"></div>
-                                            </div>
+                                        {/* Dynamic Mini Preview Skeleton */}
+                                        <div className="w-24 h-32 bg-white shadow-lg border border-slate-300 flex flex-col transform group-hover:scale-105 transition-transform duration-300 overflow-hidden">
+
+                                            {/* Modern Sidebar Layout */}
+                                            {preset.layoutId === 'modern' && (
+                                                <div className="flex h-full">
+                                                    <div className="w-1/3 h-full p-1 flex flex-col gap-1" style={{ backgroundColor: preset.previewColor }}>
+                                                        <div className="w-full h-1/4 bg-white/20 rounded-sm"></div>
+                                                        <div className="w-full h-1 bg-white/20 rounded-sm mt-auto"></div>
+                                                    </div>
+                                                    <div className="w-2/3 p-1 flex flex-col gap-1">
+                                                        <div className="h-2 w-full bg-slate-200 rounded-sm mb-1"></div>
+                                                        <div className="h-1 w-full bg-slate-100 rounded-sm"></div>
+                                                        <div className="h-1 w-3/4 bg-slate-100 rounded-sm"></div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Professional Classic Layout */}
+                                            {preset.layoutId === 'professional' && (
+                                                <div className="flex flex-col h-full p-1.5 items-center">
+                                                    <div className="h-3 w-3/4 mb-1" style={{ backgroundColor: preset.previewColor }}></div>
+                                                    <div className="h-px w-full bg-slate-200 mb-2"></div>
+                                                    <div className="w-full flex flex-col gap-1">
+                                                        <div className="h-1.5 w-1/3 bg-slate-200 rounded-sm mb-0.5" style={{ backgroundColor: preset.previewColor, opacity: 0.5 }}></div>
+                                                        <div className="h-1 w-full bg-slate-100 rounded-sm"></div>
+                                                        <div className="h-1 w-full bg-slate-100 rounded-sm"></div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Clean Minimalist Layout */}
+                                            {preset.layoutId === 'minimalist' && (
+                                                <div className="flex flex-col h-full p-2">
+                                                    <div className="h-4 w-1/2 mb-3" style={{ color: preset.previewColor }}>
+                                                        <div className="h-full w-full bg-current opacity-80 rounded-sm"></div>
+                                                    </div>
+                                                    <div className="grid grid-cols-3 gap-1 h-full">
+                                                        <div className="col-span-1 h-3/4 bg-slate-50 rounded-sm"></div>
+                                                        <div className="col-span-2 flex flex-col gap-1">
+                                                            <div className="h-1 w-full bg-slate-100 rounded-sm"></div>
+                                                            <div className="h-1 w-full bg-slate-100 rounded-sm"></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Creative Left Layout */}
+                                            {preset.layoutId === 'creative' && (
+                                                <div className="flex h-full">
+                                                    <div className="w-1/3 h-full flex flex-col items-center pt-2 gap-1" style={{ backgroundColor: preset.previewColor }}>
+                                                        <div className="w-6 h-6 rounded-full bg-white/30"></div>
+                                                        <div className="w-full h-px bg-white/10 mt-1"></div>
+                                                    </div>
+                                                    <div className="w-2/3 flex flex-col p-1 gap-1">
+                                                        <div className="h-4 w-full opacity-20" style={{ backgroundColor: preset.previewColor }}></div>
+                                                        <div className="h-1 w-full bg-slate-100 rounded-sm mt-2"></div>
+                                                        <div className="h-1 w-full bg-slate-100 rounded-sm"></div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Timeline Vertical Layout */}
+                                            {preset.layoutId === 'timeline' && (
+                                                <div className="flex flex-col h-full p-1 relative overflow-hidden">
+                                                    <div className="h-2 w-full bg-slate-100 mb-2 rounded-sm" style={{ borderTop: `2px solid ${preset.previewColor}` }}></div>
+                                                    <div className="h-full w-px bg-slate-200 absolute left-1/2 top-4"></div>
+                                                    <div className="grid grid-cols-2 gap-2 h-full relative z-10 w-full">
+                                                        <div className="text-right pt-2"><div className="h-1.5 w-full bg-slate-200 rounded-sm"></div></div>
+                                                        <div className="pt-5"><div className="h-1.5 w-full bg-slate-50 rounded-sm"></div></div>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Selection Indicator */}
