@@ -253,7 +253,18 @@ async def analyze_with_ai(resume_text: str, job_description: str, target_job_tit
         # Use google.genai (new SDK)
         from google import genai
         
-        client = genai.Client(api_key=api_key)
+        # Force v1 API to avoid v1beta 404s
+        client = genai.Client(api_key=api_key, http_options={'api_version': 'v1'})
+        
+        # DEBUG: List models to confirm visibility
+        try:
+            print(f"DEBUG: Checking models with API version v1...")
+            # Pager object, iterate to find names
+            for m in client.models.list():
+                if 'gemini-1.5-flash' in m.name:
+                    print(f"DEBUG: Found model: {m.name}")
+        except Exception as e:
+            print(f"DEBUG: Model listing failed: {e}")
         
         prompt = f"""
 Analyze the following resume against the job description and provide a detailed assessment in JSON.
@@ -605,7 +616,7 @@ async def generate_summary(request: Request, payload: SummaryRequest):
 
         from google import genai
         
-        client = genai.Client(api_key=api_key)
+        client = genai.Client(api_key=api_key, http_options={'api_version': 'v1'})
 
         prompt = f"""
 Based on the following resume text, write 3 professional, high-impact summary statements for a job application.
