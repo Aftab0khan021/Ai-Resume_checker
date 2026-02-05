@@ -255,7 +255,7 @@ async def analyze_with_ai(resume_text: str, job_description: str, target_job_tit
         
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(
-            model_name="models/gemini-1.5-pro"
+            model_name="gemini-1.5-pro-latest"
         )
 
         prompt = f"""
@@ -610,7 +610,7 @@ async def generate_summary(request: Request, payload: SummaryRequest):
         
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(
-            model_name="models/gemini-1.5-pro"
+            model_name="gemini-1.5-pro-latest"
         )
 
         prompt = f"""
