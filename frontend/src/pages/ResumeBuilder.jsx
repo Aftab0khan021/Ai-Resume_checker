@@ -2,8 +2,31 @@ import React, { useState, useRef, useMemo } from "react";
 import { useReactToPrint } from "react-to-print";
 import { Printer, PenTool, Layout, X, Eye, Palette, ChevronLeft } from "lucide-react";
 import { TemplateModern, TemplateProfessional, TemplateMinimalist } from "../components/ResumeTemplates";
-import { getThemeStyle, getFontStyle } from "../utils/templateThemes";
-import { allPresets } from "../utils/templatePresets";
+import { colorThemes, fontThemes, layoutThemes, getThemeStyle, getFontStyle } from "../utils/templateThemes";
+
+// Generate presets locally to ensure availability
+const generateAllPresets = () => {
+    const presets = [];
+    let count = 0;
+    layoutThemes.forEach(layout => {
+        colorThemes.forEach(color => {
+            fontThemes.forEach(font => {
+                count++;
+                presets.push({
+                    id: `preset-${count}`,
+                    name: `${color.name} ${layout.name}`,
+                    layoutId: layout.id,
+                    themeId: color.id,
+                    fontId: font.id,
+                    previewColor: color.primary
+                });
+            });
+        });
+    });
+    return presets;
+};
+
+const allPresets = generateAllPresets();
 
 export default function ResumeBuilder() {
     const [formData, setFormData] = useState({
