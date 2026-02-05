@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 import { useReactToPrint } from "react-to-print";
 import { Printer, Layout, X, Eye, ChevronLeft, Check } from "lucide-react";
-import { TemplateModern, TemplateProfessional, TemplateMinimalist, TemplateCreative, TemplateTimeline, TemplateTwoColumn, TemplateCompact, TemplateGrid, TemplateHeaderFocused, TemplateAsymmetric, TemplateHorizontalSections } from "../components/ResumeTemplates";
+import { TemplateModern, TemplateProfessional, TemplateMinimalist, TemplateCreative, TemplateTimeline, TemplateTwoColumn, TemplateCompact, TemplateGrid, TemplateHeaderFocused, TemplateAsymmetric, TemplateHorizontalSections, TemplateATSClassic, TemplateATSModern } from "../components/ResumeTemplates";
 import { getThemeStyle, getFontStyle } from "../utils/templateThemes";
 
 // MANUAL PRESET DEFINITIONS - Expanded Collection
@@ -272,7 +272,9 @@ export default function ResumeBuilder() {
         grid: TemplateGrid,
         headerfocused: TemplateHeaderFocused,
         asymmetric: TemplateAsymmetric,
-        horizontal: TemplateHorizontalSections
+        horizontal: TemplateHorizontalSections,
+        atsclassic: TemplateATSClassic,
+        atsmodern: TemplateATSModern
     };
     const SelectedTemplateComponent = templates[selectedPreset.layoutId] || TemplateModern;
 

@@ -63,7 +63,9 @@ export const layoutThemes = [
     { id: "grid", name: "Grid Layout" },
     { id: "headerfocused", name: "Header Dominant" },
     { id: "asymmetric", name: "Asymmetric Split" },
-    { id: "horizontal", name: "Horizontal Sections" }
+    { id: "horizontal", name: "Horizontal Sections" },
+    { id: "atsclassic", name: "ATS Classic" },
+    { id: "atsmodern", name: "ATS Modern" }
 ];
 
 export const getThemeStyle = (themeId) => colorThemes.find(t => t.id === themeId) || colorThemes[0];

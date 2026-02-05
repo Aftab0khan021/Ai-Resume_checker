@@ -1177,3 +1177,209 @@ export const TemplateHorizontalSections = ({ data, theme, font }) => {
     );
 };
 
+// ========== ATS-OPTIMIZED TEMPLATES ==========
+
+// 7. ATS CLASSIC (Ultra-Simple, Maximum Parseability)
+export const TemplateATSClassic = ({ data, theme, font }) => {
+    return (
+        <div className="p-12 min-h-[1000px] w-full bg-white font-sans text-black">
+            <StyleInjector theme={theme} font={font} />
+
+            {/* Simple Header - No Graphics */}
+            <div className="mb-6 text-center border-b-2 border-black pb-4">
+                <h1 className="text-3xl font-bold uppercase mb-2">{data.fullName}</h1>
+                <div className="text-sm">
+                    {data.email} | {data.phone} {data.linkedin && `| ${data.linkedin}`}
+                </div>
+            </div>
+
+            {/* Summary */}
+            {data.summary && (
+                <div className="mb-6">
+                    <h2 className="text-lg font-bold uppercase border-b border-black mb-2">PROFESSIONAL SUMMARY</h2>
+                    <p className="text-sm leading-relaxed">{data.summary}</p>
+                </div>
+            )}
+
+            {/* Experience */}
+            {data.experience && data.experience.length > 0 && (
+                <div className="mb-6">
+                    <h2 className="text-lg font-bold uppercase border-b border-black mb-3">WORK EXPERIENCE</h2>
+                    <div className="space-y-4">
+                        {data.experience.map((exp, idx) => (
+                            <div key={idx}>
+                                <div className="flex justify-between items-baseline mb-1">
+                                    <h3 className="font-bold text-md">{exp.title}</h3>
+                                    <span className="text-sm">{exp.date}</span>
+                                </div>
+                                <div className="text-sm font-semibold mb-1">{exp.company}</div>
+                                <p className="text-sm leading-relaxed">{exp.desc}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Education */}
+            {data.education && data.education.length > 0 && (
+                <div className="mb-6">
+                    <h2 className="text-lg font-bold uppercase border-b border-black mb-3">EDUCATION</h2>
+                    <div className="space-y-2">
+                        {data.education.map((edu, idx) => (
+                            <div key={idx}>
+                                <div className="flex justify-between items-baseline">
+                                    <h3 className="font-bold text-sm">{edu.degree}</h3>
+                                    <span className="text-sm">{edu.year}</span>
+                                </div>
+                                <div className="text-sm">{edu.school}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Skills */}
+            {data.skills && (
+                <div className="mb-6">
+                    <h2 className="text-lg font-bold uppercase border-b border-black mb-2">SKILLS</h2>
+                    <p className="text-sm leading-relaxed">{data.skills}</p>
+                </div>
+            )}
+
+            {/* Projects */}
+            {data.projects && data.projects.length > 0 && (
+                <div className="mb-6">
+                    <h2 className="text-lg font-bold uppercase border-b border-black mb-3">PROJECTS</h2>
+                    <div className="space-y-3">
+                        {data.projects.map((proj, idx) => (
+                            <div key={idx}>
+                                <h3 className="font-bold text-sm">{proj.title}</h3>
+                                <p className="text-sm leading-relaxed">{proj.desc}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Certifications */}
+            {data.certifications && (
+                <div className="mb-6">
+                    <h2 className="text-lg font-bold uppercase border-b border-black mb-2">CERTIFICATIONS</h2>
+                    <p className="text-sm">{data.certifications}</p>
+                </div>
+            )}
+
+            {/* Involvement */}
+            {data.involvement && (
+                <div className="mb-6">
+                    <h2 className="text-lg font-bold uppercase border-b border-black mb-2">PROFESSIONAL INVOLVEMENT</h2>
+                    <p className="text-sm">{data.involvement}</p>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// 8. ATS MODERN (Clean ATS with Subtle Styling)
+export const TemplateATSModern = ({ data, theme, font }) => {
+    return (
+        <div className="p-10 min-h-[1000px] w-full bg-white font-sans theme-text">
+            <StyleInjector theme={theme} font={font} />
+
+            {/* Header */}
+            <div className="mb-8 pb-4 border-b-2" style={{ borderColor: theme.primary }}>
+                <h1 className="text-4xl font-bold theme-primary mb-2">{data.fullName}</h1>
+                <div className="text-sm theme-secondary">
+                    {data.email} • {data.phone} {data.linkedin && `• ${data.linkedin}`}
+                </div>
+            </div>
+
+            {/* Summary */}
+            {data.summary && (
+                <div className="mb-6">
+                    <h2 className="text-md font-bold uppercase tracking-wide theme-primary mb-2">Summary</h2>
+                    <p className="text-sm leading-7">{data.summary}</p>
+                </div>
+            )}
+
+            {/* Professional Experience */}
+            {data.experience && data.experience.length > 0 && (
+                <div className="mb-6">
+                    <h2 className="text-md font-bold uppercase tracking-wide theme-primary mb-3">Professional Experience</h2>
+                    <div className="space-y-4">
+                        {data.experience.map((exp, idx) => (
+                            <div key={idx}>
+                                <div className="flex justify-between items-baseline mb-1">
+                                    <h3 className="font-bold text-sm">{exp.title}</h3>
+                                    <span className="text-xs theme-secondary">{exp.date}</span>
+                                </div>
+                                <div className="text-sm font-semibold theme-secondary mb-1">{exp.company}</div>
+                                <p className="text-sm leading-7">{exp.desc}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Education */}
+            {data.education && data.education.length > 0 && (
+                <div className="mb-6">
+                    <h2 className="text-md font-bold uppercase tracking-wide theme-primary mb-3">Education</h2>
+                    <div className="space-y-2">
+                        {data.education.map((edu, idx) => (
+                            <div key={idx}>
+                                <div className="flex justify-between items-baseline">
+                                    <h3 className="font-bold text-sm">{edu.degree}</h3>
+                                    <span className="text-xs theme-secondary">{edu.year}</span>
+                                </div>
+                                <div className="text-sm theme-secondary">{edu.school}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Skills */}
+            {data.skills && (
+                <div className="mb-6">
+                    <h2 className="text-md font-bold uppercase tracking-wide theme-primary mb-2">Technical Skills</h2>
+                    <p className="text-sm leading-7">{data.skills}</p>
+                </div>
+            )}
+
+            {/* Projects */}
+            {data.projects && data.projects.length > 0 && (
+                <div className="mb-6">
+                    <h2 className="text-md font-bold uppercase tracking-wide theme-primary mb-3">Key Projects</h2>
+                    <div className="space-y-3">
+                        {data.projects.map((proj, idx) => (
+                            <div key={idx}>
+                                <h3 className="font-bold text-sm theme-primary">{proj.title}</h3>
+                                <p className="text-sm leading-7">{proj.desc}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Certifications & Involvement */}
+            <div className="grid grid-cols-2 gap-6">
+                {data.certifications && (
+                    <div>
+                        <h2 className="text-md font-bold uppercase tracking-wide theme-primary mb-2">Certifications</h2>
+                        <p className="text-sm leading-7">{data.certifications}</p>
+                    </div>
+                )}
+
+                {data.involvement && (
+                    <div>
+                        <h2 className="text-md font-bold uppercase tracking-wide theme-primary mb-2">Involvement</h2>
+                        <p className="text-sm leading-7">{data.involvement}</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+
