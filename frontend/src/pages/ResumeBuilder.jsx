@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo } from "react";
 import { useReactToPrint } from "react-to-print";
-import { Printer, PenTool, Layout, X, Eye, Palette, ChevronLeft } from "lucide-react";
+import { Printer, PenTool, Layout, X, Eye, Palette, ChevronLeft, Check } from "lucide-react";
 import { TemplateModern, TemplateProfessional, TemplateMinimalist, TemplateCreative, TemplateTimeline } from "../components/ResumeTemplates";
 import { colorThemes, fontThemes, layoutThemes, getThemeStyle, getFontStyle } from "../utils/templateThemes";
 
