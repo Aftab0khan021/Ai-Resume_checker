@@ -315,7 +315,7 @@ export const TemplateTimeline = ({ data, theme, font }) => {
                     <h1 className="text-5xl font-bold mb-4 theme-primary font-heading" style={{ color: theme.primary }}>{data.fullName}</h1>
                     <div className="flex justify-center gap-2 text-sm theme-secondary font-mono" style={{ color: theme.secondary }}>
                         <span>{data.email}</span>
-                        {data.phone && <span> // {data.phone}</span>}
+                        {data.phone && <span> {'//'} {data.phone}</span>}
                     </div>
                     {data.summary && (
                         <div className="mt-6 p-4 bg-white shadow-sm rounded-xl border border-slate-200 text-sm leading-relaxed text-center">
