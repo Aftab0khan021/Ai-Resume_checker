@@ -3,7 +3,6 @@ import React from "react";
 import { Target, CheckCircle2, AlertTriangle, TrendingUp, FileText, Mail, Eye, Award, Zap, MessageSquare } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../card";
 import { Progress } from "../progress";
-import { Badge } from "../badge";
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer, Tooltip } from "recharts";
 
 const ATSBreakdownDashboard = ({ analysis }) => {
@@ -136,11 +135,11 @@ const ATSBreakdownDashboard = ({ analysis }) => {
               <div className="text-lg text-slate-600 mb-4">Overall ATS Score</div>
               <Progress value={overallScore} className="w-full max-w-xs" indicatorClassName={getProgressColor(overallScore)} />
               <p className="text-sm text-slate-500 mt-4 text-center max-w-md">
-                {overallScore >= 80 
+                {overallScore >= 80
                   ? "Excellent! Your resume is highly ATS-friendly."
                   : overallScore >= 60
-                  ? "Good foundation. Some improvements will boost your score."
-                  : "Needs attention. Follow recommendations to improve ATS compatibility."}
+                    ? "Good foundation. Some improvements will boost your score."
+                    : "Needs attention. Follow recommendations to improve ATS compatibility."}
               </p>
             </div>
 
@@ -166,7 +165,7 @@ const ATSBreakdownDashboard = ({ analysis }) => {
           const status = getScoreStatus(cat.score);
           const Icon = cat.icon;
           const StatusIcon = status.icon;
-          
+
           return (
             <Card key={idx} className="hover:shadow-lg transition-shadow">
               <CardContent className="pt-6">
