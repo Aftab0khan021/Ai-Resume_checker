@@ -360,18 +360,18 @@ Return a JSON with this EXACT structure:
             "analysis_summary": analysis_summary,
             "ats_compatibility_score": ats_score,
             "quantification_feedback": quant_feedback,
-            "ats_breakdown": {
-                "formatting_score": float(ats_breakdown.get("formatting_score", ats_score)),
-                "keyword_density": float(ats_breakdown.get("keyword_density", ats_score)),
-                "contact_info_score": float(ats_breakdown.get("contact_info_score", ats_score)),
-                "readability_score": float(ats_breakdown.get("readability_score", ats_score)),
-                "section_completeness": float(ats_breakdown.get("section_completeness", ats_score)),
-                "quantification_score": float(ats_breakdown.get("quantification_score", ats_score)),
-                "length_score": float(ats_breakdown.get("length_score", ats_score)),
-                "professional_language": float(ats_breakdown.get("professional_language", ats_score))
+            "ats_breakdown": ats_breakdown if ats_breakdown else {
+                "formatting_score": ats_score,
+                "keyword_density": ats_score,
+                "contact_info_score": ats_score,
+                "readability_score": ats_score,
+                "section_completeness": ats_score,
+                "quantification_score": ats_score,
+                "length_score": ats_score,
+                "professional_language": ats_score
             },
-            "ats_red_flags": ats_red_flags,
-            "ats_green_flags": ats_green_flags
+            "ats_red_flags": ats_red_flags if ats_red_flags else ["AI did not provide specific red flags"],
+            "ats_green_flags": ats_green_flags if ats_green_flags else ["AI did not provide specific green flags"]
         }
 
     except Exception as e:
