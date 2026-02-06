@@ -247,13 +247,13 @@ export const templateConfigs = {
         id: "twocolumn",
         layout: "grid",
         gridColumns: "1fr 1fr",
-        sectionOrder: ["header", "summary", "experience", "education", "skills", "projects"],
+        sectionOrder: ["header", "summary", "skills", "education", "experience", "projects"],
         gridSpans: {
             header: "1 / -1",
             summary: "1 / -1",
-            experience: "1 / 2",
-            education: "2 / 3",
             skills: "1 / 2",
+            education: "1 / 2",
+            experience: "2 / 3",
             projects: "2 / 3"
         },
         sections: {
@@ -344,14 +344,14 @@ export const templateConfigs = {
         id: "grid",
         layout: "grid",
         gridColumns: "1fr 2fr",
-        sectionOrder: ["header", "skills", "education", "experience", "projects", "summary"],
+        sectionOrder: ["header", "summary", "skills", "education", "experience", "projects"],
         gridSpans: {
             header: "1 / -1",
+            summary: "1 / -1",
             skills: "1 / 2",
             education: "1 / 2",
             experience: "2 / 3",
-            projects: "2 / 3",
-            summary: "1 / -1"
+            projects: "2 / 3"
         },
         sections: {
             header: {
