@@ -38,12 +38,24 @@ export default function ResumeRenderer({ data, config }) {
                         <h1 style={{ color: config.colors?.primary || theme.primary, ...styles.name }}>
                             {data.fullName}
                         </h1>
-                        <div style={{ ...styles.contactRow }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', ...styles.contactRow }}>
                             <ContactItem type="email" value={data.email} styles={styles.contactItem} />
                             <ContactItem type="phone" value={data.phone} styles={styles.contactItem} />
                             {data.linkedin && <ContactItem type="linkedin" value={data.linkedin} styles={styles.contactItem} />}
                         </div>
                     </header>
+                );
+
+            case 'contact':
+                return (
+                    <section key="contact" style={styles.container}>
+                        <SectionHeader title={sectionConfig.title || "Contact"} styles={styles.header} />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <ContactItem type="email" value={data.email} styles={styles.contactItem} />
+                            <ContactItem type="phone" value={data.phone} styles={styles.contactItem} />
+                            {data.linkedin && <ContactItem type="linkedin" value={data.linkedin} styles={styles.contactItem} />}
+                        </div>
+                    </section>
                 );
 
             case 'summary':
@@ -95,7 +107,6 @@ export default function ResumeRenderer({ data, config }) {
                     </section>
                 ) : null;
 
-            // Round 2 Additions
             case 'projects':
                 return data.projects?.length > 0 ? (
                     <section key="projects" style={styles.container}>
@@ -117,11 +128,10 @@ export default function ResumeRenderer({ data, config }) {
     };
 
     // 3. Layout Rendering Logic
-    // Support for different high-level layouts: 'single-column', 'sidebar-left', 'sidebar-right', 'grid'
 
     if (config.layout === 'sidebar-left') {
         return (
-            <div style={containerStyle} className="flex">
+            <div style={{ ...containerStyle, display: 'flex' }}>
                 {/* Sidebar */}
                 <aside style={{ width: config.sidebarWidth || '33%', backgroundColor: config.colors?.sidebarBg || theme.secondary, padding: '2rem', ...config.sidebarStyles }}>
                     {config.sidebarOrder?.map(sectionId => renderSection(sectionId))}
@@ -134,13 +144,28 @@ export default function ResumeRenderer({ data, config }) {
         );
     }
 
+    if (config.layout === 'sidebar-right') {
+        return (
+            <div style={{ ...containerStyle, display: 'flex' }}>
+                {/* Main Content */}
+                <main style={{ flex: 1, padding: '2rem', ...config.mainStyles }}>
+                    {config.mainOrder?.map(sectionId => renderSection(sectionId))}
+                </main>
+                {/* Sidebar */}
+                <aside style={{ width: config.sidebarWidth || '30%', backgroundColor: config.colors?.sidebarBg || theme.secondary, padding: '2rem', ...config.sidebarStyles }}>
+                    {config.sidebarOrder?.map(sectionId => renderSection(sectionId))}
+                </aside>
+            </div>
+        );
+    }
+
     if (config.layout === 'grid') {
         return (
             <div style={{ ...containerStyle, padding: '2.5rem' }}>
                 {/* Header is typically full width in grid */}
                 {renderSection('header')}
                 <div style={{ display: 'grid', gridTemplateColumns: config.gridColumns || '1fr 1fr', gap: '2rem', marginTop: '2rem' }}>
-                    {config.sectionOrder?.map((sectionId, idx) => (
+                    {config.sectionOrder?.filter(id => id !== 'header').map((sectionId) => (
                         <div key={sectionId} style={{ gridColumn: config.gridSpans?.[sectionId] || 'auto' }}>
                             {renderSection(sectionId)}
                         </div>
