@@ -1382,4 +1382,396 @@ export const TemplateATSModern = ({ data, theme, font }) => {
     );
 };
 
+// ======================================
+// NEW STRUCTURAL TEMPLATES (ROUND 2)
+// ======================================
+
+// 9. TECH MINIMALIST (Developer Focused)
+export const TemplateTech = ({ data, theme, font }) => {
+    return (
+        <div className="p-8 min-h-[1000px] w-full bg-white text-slate-800 font-mono">
+            <StyleInjector theme={theme} font={font} />
+
+            {/* Header */}
+            <div className="border-b-4 border-slate-800 pb-6 mb-8">
+                <h1 className="text-4xl font-bold mb-2 tracking-tighter">{`> ${data.fullName || 'User'}_`}</h1>
+                <div className="text-sm space-x-4 opacity-80">
+                    <span>{`const email = "${data.email || ''}";`}</span>
+                    <span>{`const phone = "${data.phone || ''}";`}</span>
+                </div>
+                {data.linkedin && <div className="text-sm mt-1 opacity-80">{`// ${data.linkedin}`}</div>}
+            </div>
+
+            <div className="flex flex-col gap-8">
+                {/* Skills - Top Priority for Tech */}
+                {data.skills && (
+                    <div className="bg-slate-50 p-4 border border-slate-200 rounded">
+                        <h2 className="text-lg font-bold border-b border-slate-300 mb-2 pb-1 text-slate-600">SKILLS.json</h2>
+                        <p className="text-sm leading-relaxed font-mono text-slate-700">
+                            {`[ ${data.skills.split(',').map(s => `"${s.trim()}"`).join(', ')} ]`}
+                        </p>
+                    </div>
+                )}
+
+                {/* Experience */}
+                {data.experience && data.experience.length > 0 && (
+                    <div>
+                        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                            <span className="text-blue-600">function</span> Experience() {'{'}
+                        </h2>
+                        <div className="border-l-2 border-slate-200 ml-2 pl-6 space-y-6">
+                            {data.experience.map((exp, idx) => (
+                                <div key={idx} className="relative">
+                                    <div className="absolute -left-[31px] top-1 w-3 h-3 bg-blue-600 rounded-full"></div>
+                                    <h3 className="font-bold text-lg">{exp.title}</h3>
+                                    <div className="text-sm font-bold text-slate-500 mb-2">{exp.company} // {exp.date}</div>
+                                    <p className="text-sm opacity-90">{exp.desc}</p>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="mt-2 text-xl font-bold">{'}'}</div>
+                    </div>
+                )}
+
+                {/* Projects */}
+                {data.projects && data.projects.length > 0 && (
+                    <div>
+                        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                            <span className="text-purple-600">class</span> Projects {'{'}
+                        </h2>
+                        <div className="border-l-2 border-slate-200 ml-2 pl-6 space-y-6">
+                            {data.projects.map((proj, idx) => (
+                                <div key={idx} className="relative">
+                                    <div className="absolute -left-[31px] top-1 w-3 h-3 bg-purple-600 rounded-full"></div>
+                                    <h3 className="font-bold text-lg">{proj.title}</h3>
+                                    <p className="text-sm opacity-90 mt-1">{proj.desc}</p>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="mt-2 text-xl font-bold">{'}'}</div>
+                    </div>
+                )}
+
+                {/* Education */}
+                {data.education && data.education.length > 0 && (
+                    <div>
+                        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                            <span className="text-green-600">export</span> Education {'{'}
+                        </h2>
+                        <div className="ml-2 pl-6 space-y-2">
+                            {data.education.map((edu, idx) => (
+                                <div key={idx}>
+                                    <div className="font-bold">{edu.degree}</div>
+                                    <div className="text-sm opacity-70">{edu.school} | {edu.year}</div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="mt-2 text-xl font-bold">{'}'}</div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// 10. EXECUTIVE SERIF (High-End Traditional)
+export const TemplateExecutive = ({ data, theme, font }) => {
+    const primaryColor = theme.primary || '#000000';
+    return (
+        <div className="p-12 min-h-[1000px] w-full bg-[#fdfbf7] text-slate-900 font-serif">
+            <StyleInjector theme={theme} font={font} />
+
+            <div className="text-center border-b-2 border-double border-slate-300 pb-8 mb-8">
+                <h1 className="text-5xl font-serif tracking-wide mb-4 text-slate-800 uppercase">{data.fullName}</h1>
+                <div className="flex justify-center gap-6 text-sm italic text-slate-600 font-sans">
+                    <span>{data.email}</span>
+                    <span>&bull;</span>
+                    <span>{data.phone}</span>
+                    {data.linkedin && (
+                        <>
+                            <span>&bull;</span>
+                            <span>{data.linkedin}</span>
+                        </>
+                    )}
+                </div>
+            </div>
+
+            {data.summary && (
+                <div className="mb-8 text-center max-w-2xl mx-auto">
+                    <p className="text-md leading-relaxed italic text-slate-700">{data.summary}</p>
+                </div>
+            )}
+
+            <div className="space-y-8">
+                {/* Experience */}
+                {data.experience && data.experience.length > 0 && (
+                    <section>
+                        <h2 className="text-center text-xl uppercase tracking-widest border-b border-slate-300 pb-2 mb-6 font-sans font-light text-slate-500">Experience</h2>
+                        <div className="space-y-6">
+                            {data.experience.map((exp, idx) => (
+                                <div key={idx} className="group">
+                                    <div className="flex justify-between items-baseline mb-1">
+                                        <h3 className="font-bold text-lg font-serif">{exp.company}</h3>
+                                        <span className="text-sm font-sans text-slate-500">{exp.date}</span>
+                                    </div>
+                                    <div className="italic mb-2 text-slate-700 font-serif">{exp.title}</div>
+                                    <p className="text-sm leading-relaxed text-slate-600 font-sans">{exp.desc}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                {/* Education & Skills Grid */}
+                <div className="grid grid-cols-2 gap-12">
+                    {data.education && (
+                        <section>
+                            <h2 className="text-center text-lg uppercase tracking-widest border-b border-slate-300 pb-2 mb-6 font-sans font-light text-slate-500">Education</h2>
+                            {data.education.map((edu, idx) => (
+                                <div key={idx} className="text-center">
+                                    <div className="font-bold font-serif">{edu.school}</div>
+                                    <div className="italic text-slate-600 font-serif">{edu.degree}</div>
+                                    <div className="text-sm text-slate-400 font-sans mt-1">{edu.year}</div>
+                                </div>
+                            ))}
+                        </section>
+                    )}
+
+                    {data.skills && (
+                        <section>
+                            <h2 className="text-center text-lg uppercase tracking-widest border-b border-slate-300 pb-2 mb-6 font-sans font-light text-slate-500">Skills</h2>
+                            <p className="text-center text-sm leading-7 font-sans text-slate-600">{data.skills}</p>
+                        </section>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// 11. BOLD CONTRAST (Thick Borders, Modern)
+export const TemplateBold = ({ data, theme, font }) => {
+    return (
+        <div className="p-8 min-h-[1000px] w-full bg-white text-black font-sans border-[6px] border-black">
+            <StyleInjector theme={theme} font={font} />
+
+            <div className="bg-black text-white p-8 -mx-8 -mt-8 mb-8">
+                <h1 className="text-6xl font-black uppercase tracking-tighter mb-4 leading-none">{data.fullName}</h1>
+                <div className="flex flex-wrap gap-4 text-sm font-bold opacity-90">
+                    <span className="bg-white text-black px-2 py-1">{data.email}</span>
+                    <span className="bg-white text-black px-2 py-1">{data.phone}</span>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-[1fr_2fr] gap-8">
+                <div className="space-y-8">
+                    {data.skills && (
+                        <div>
+                            <h2 className="bg-black text-white inline-block px-2 py-1 font-black uppercase text-lg mb-4">Skills</h2>
+                            <p className="font-bold text-sm leading-relaxed border-l-4 border-black pl-4">{data.skills}</p>
+                        </div>
+                    )}
+
+                    {data.education && (
+                        <div>
+                            <h2 className="bg-black text-white inline-block px-2 py-1 font-black uppercase text-lg mb-4">Education</h2>
+                            <div className="space-y-4 border-l-4 border-black pl-4">
+                                {data.education.map((edu, idx) => (
+                                    <div key={idx}>
+                                        <div className="font-black text-lg leading-tight">{edu.school}</div>
+                                        <div className="font-bold text-sm mt-1">{edu.degree}</div>
+                                        <div className="text-xs font-bold mt-1 bg-slate-200 inline-block px-1">{edu.year}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <div>
+                    {data.summary && (
+                        <div className="mb-8 p-4 border-4 border-black bg-slate-50">
+                            <p className="font-bold text-lg leading-tight">{data.summary}</p>
+                        </div>
+                    )}
+
+                    {data.experience && (
+                        <div>
+                            <h2 className="text-4xl font-black uppercase mb-6 border-b-[6px] border-black inline-block">Work</h2>
+                            <div className="space-y-8">
+                                {data.experience.map((exp, idx) => (
+                                    <div key={idx}>
+                                        <div className="flex justify-between items-end border-b-4 border-black pb-1 mb-2">
+                                            <h3 className="font-black text-2xl">{exp.company}</h3>
+                                            <span className="font-bold text-sm bg-black text-white px-2 mb-1">{exp.date}</span>
+                                        </div>
+                                        <div className="font-extrabold text-lg mb-2">{exp.title}</div>
+                                        <p className="font-bold text-sm leading-relaxed opacity-80">{exp.desc}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// 12. SWISS GRID (Helvetica style, clean grid)
+export const TemplateSwiss = ({ data, theme, font }) => {
+    return (
+        <div className="p-10 min-h-[1000px] w-full bg-white text-slate-900 font-sans">
+            <StyleInjector theme={theme} font={font} />
+
+            {/* Header Block */}
+            <div className="grid grid-cols-12 gap-4 mb-16 border-t-8 border-red-600 pt-8">
+                <div className="col-span-8">
+                    <h1 className="text-6xl font-bold tracking-tight leading-none text-slate-900">{data.fullName}</h1>
+                    <div className="text-xl font-bold text-slate-400 mt-2">RESUME // {new Date().getFullYear()}</div>
+                </div>
+                <div className="col-span-4 text-right flex flex-col justify-between font-bold text-sm text-slate-500">
+                    <div className="flex flex-col items-end">
+                        <span className="text-slate-900">{data.email}</span>
+                        <span>{data.phone}</span>
+                        {data.linkedin && <span>{data.linkedin}</span>}
+                    </div>
+                </div>
+            </div>
+
+            {/* Layout Grid */}
+            <div className="grid grid-cols-12 gap-6 h-full">
+
+                {/* Left Col - Contact & Skills */}
+                <div className="col-span-4 flex flex-col gap-12 pr-6">
+                    {data.skills && (
+                        <div>
+                            <h3 className="font-bold text-red-600 mb-4 text-sm uppercase tracking-wider">Competencies</h3>
+                            <p className="text-sm leading-6 font-bold text-slate-700">{data.skills}</p>
+                        </div>
+                    )}
+
+                    {data.education && (
+                        <div>
+                            <h3 className="font-bold text-red-600 mb-4 text-sm uppercase tracking-wider">Education</h3>
+                            <div className="space-y-6">
+                                {data.education.map((edu, idx) => (
+                                    <div key={idx} className="border-l-2 border-slate-200 pl-3">
+                                        <div className="font-bold text-slate-900">{edu.school}</div>
+                                        <div className="text-sm font-bold text-slate-500">{edu.degree}</div>
+                                        <div className="text-xs mt-1 font-bold text-red-500">{edu.year}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Right Col - Experience */}
+                <div className="col-span-8">
+                    {data.summary && (
+                        <div className="mb-12">
+                            <h3 className="font-bold text-slate-400 mb-4 text-sm uppercase tracking-wider">About</h3>
+                            <p className="text-xl font-bold leading-relaxed text-slate-800">{data.summary}</p>
+                        </div>
+                    )}
+
+                    {data.experience && (
+                        <div>
+                            <h3 className="font-bold text-red-600 mb-8 text-sm uppercase tracking-wider">Professional History</h3>
+                            <div className="space-y-12">
+                                {data.experience.map((exp, idx) => (
+                                    <div key={idx} className="grid grid-cols-12 gap-4">
+                                        <div className="col-span-3 text-sm font-bold text-slate-400 pt-1">{exp.date}</div>
+                                        <div className="col-span-9">
+                                            <div className="text-2xl font-bold mb-1 text-slate-900">{exp.title}</div>
+                                            <div className="text-sm font-bold text-red-600 mb-4 uppercase">{exp.company}</div>
+                                            <p className="text-sm leading-relaxed font-medium text-slate-600">{exp.desc}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// 13. CARD LAYOUT (Modern Cards)
+export const TemplateCards = ({ data, theme, font }) => {
+    return (
+        <div className="p-8 min-h-[1000px] w-full bg-slate-100 text-slate-800 font-sans">
+            <StyleInjector theme={theme} font={font} />
+
+            <div className="bg-white p-8 rounded-xl shadow-sm mb-6 flex justify-between items-center border-l-8 border-indigo-500">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-800">{data.fullName}</h1>
+                    <div className="text-sm text-slate-500 mt-1 font-medium">{data.email} • {data.phone}</div>
+                </div>
+                {data.linkedin && <div className="text-sm font-bold text-indigo-600 bg-indigo-50 px-4 py-2 rounded-lg">{data.linkedin}</div>}
+            </div>
+
+            <div className="grid grid-cols-12 gap-6">
+                {/* Left Column */}
+                <div className="col-span-4 space-y-6">
+                    {data.skills && (
+                        <div className="bg-white p-6 rounded-xl shadow-sm">
+                            <h2 className="font-bold text-xs uppercase text-slate-400 mb-4 tracking-widest">Skills</h2>
+                            <div className="flex flex-wrap gap-2">
+                                {data.skills.split(',').map((s, i) => (
+                                    <span key={i} className="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold">{s.trim()}</span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {data.education && (
+                        <div className="bg-white p-6 rounded-xl shadow-sm">
+                            <h2 className="font-bold text-xs uppercase text-slate-400 mb-4 tracking-widest">Education</h2>
+                            <div className="space-y-4">
+                                {data.education.map((edu, idx) => (
+                                    <div key={idx} className="border-b border-slate-50 last:border-0 pb-2 last:pb-0">
+                                        <div className="font-bold text-slate-800">{edu.school}</div>
+                                        <div className="text-xs text-slate-500 font-medium">{edu.degree}</div>
+                                        <div className="text-xs bg-green-50 text-green-700 inline-block px-2 py-0.5 rounded mt-1 font-bold">{edu.year}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Right Column */}
+                <div className="col-span-8 space-y-6">
+                    {data.summary && (
+                        <div className="bg-white p-6 rounded-xl shadow-sm border-t-4 border-slate-200">
+                            <p className="text-slate-700 leading-relaxed font-medium">{data.summary}</p>
+                        </div>
+                    )}
+
+                    {data.experience && (
+                        <div className="space-y-4">
+                            <h2 className="font-bold text-xs uppercase text-slate-400 tracking-widest ml-1 mb-2">Experience</h2>
+                            {data.experience.map((exp, idx) => (
+                                <div key={idx} className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow border border-transparent hover:border-indigo-100">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <h3 className="font-bold text-lg text-slate-800">{exp.title}</h3>
+                                            <div className="text-sm font-bold text-indigo-500">{exp.company}</div>
+                                        </div>
+                                        <span className="text-xs font-bold bg-slate-100 text-slate-600 px-3 py-1 rounded-full">{exp.date}</span>
+                                    </div>
+                                    <p className="text-sm text-slate-600 mt-3 leading-relaxed">{exp.desc}</p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 

@@ -65,7 +65,12 @@ export const layoutThemes = [
     { id: "asymmetric", name: "Asymmetric Split" },
     { id: "horizontal", name: "Horizontal Sections" },
     { id: "atsclassic", name: "ATS Classic" },
-    { id: "atsmodern", name: "ATS Modern" }
+    { id: "atsmodern", name: "ATS Modern" },
+    { id: "tech", name: "Tech Minimalist" },
+    { id: "executive", name: "Executive Serif" },
+    { id: "bold", name: "Bold Contrast" },
+    { id: "swiss", name: "Swiss Grid" },
+    { id: "cards", name: "Modern Cards" }
 ];
 
 export const getThemeStyle = (themeId) => colorThemes.find(t => t.id === themeId) || colorThemes[0];

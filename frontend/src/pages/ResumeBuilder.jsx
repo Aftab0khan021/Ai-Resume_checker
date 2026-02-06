@@ -1,148 +1,68 @@
 import React, { useState, useRef } from "react";
 import { useReactToPrint } from "react-to-print";
 import { Printer, Layout, X, Eye, ChevronLeft, Check } from "lucide-react";
-import { TemplateModern, TemplateProfessional, TemplateMinimalist, TemplateCreative, TemplateTimeline, TemplateTwoColumn, TemplateCompact, TemplateGrid, TemplateHeaderFocused, TemplateAsymmetric, TemplateHorizontalSections, TemplateATSClassic, TemplateATSModern } from "../components/ResumeTemplates";
+import {
+    TemplateModern, TemplateProfessional, TemplateMinimalist, TemplateCreative,
+    TemplateTimeline, TemplateTwoColumn, TemplateCompact, TemplateGrid,
+    TemplateHeaderFocused, TemplateAsymmetric, TemplateHorizontalSections,
+    TemplateATSClassic, TemplateATSModern,
+    TemplateTech, TemplateExecutive, TemplateBold, TemplateSwiss, TemplateCards
+} from "../components/ResumeTemplates";
 import { getThemeStyle, getFontStyle } from "../utils/templateThemes";
 
-// MANUAL PRESET DEFINITIONS - Expanded Collection
+// MANUAL PRESET DEFINITIONS - Unique Structural Layouts Only
 const manualPresets = [
-    // MODERN CATEGORY
+    // 1. MODERN
     {
         id: "modern-1",
         name: "Modern Sidebar",
         layoutId: "modern",
-        description: "Clean sidebar layout for professional impact",
-        previewColor: "#2563eb", // Blue
+        description: "Sidebar layout with colored left panel",
+        previewColor: "#2563eb",
         themeId: "blue",
         fontId: "sans"
     },
-    {
-        id: "modern-2",
-        name: "Modern Ocean",
-        layoutId: "modern",
-        description: "Calming blue tones with modern structure",
-        previewColor: "#0891b2", // Cyan
-        themeId: "cyan",
-        fontId: "sans"
-    },
-    {
-        id: "modern-3",
-        name: "Modern Tech",
-        layoutId: "modern",
-        description: "Tech-focused with indigo accents",
-        previewColor: "#6366f1", // Indigo
-        themeId: "indigo",
-        fontId: "sans"
-    },
-
-    // PROFESSIONAL CATEGORY
+    // 2. PROFESSIONAL
     {
         id: "professional-1",
         name: "Professional Classic",
         layoutId: "professional",
-        description: "Traditional top-header layout for corporate roles",
-        previewColor: "#475569", // Slate
+        description: "Traditional top-header with two columns",
+        previewColor: "#475569",
         themeId: "slate",
         fontId: "serif"
     },
-    {
-        id: "professional-2",
-        name: "Professional Executive",
-        layoutId: "professional",
-        description: "Elegant serif design for senior positions",
-        previewColor: "#1e293b", // Dark Slate
-        themeId: "slate",
-        fontId: "serif"
-    },
-    {
-        id: "professional-3",
-        name: "Professional Corporate",
-        layoutId: "professional",
-        description: "Conservative design for finance and law",
-        previewColor: "#334155", // Slate
-        themeId: "slate",
-        fontId: "sans"
-    },
-
-    // CREATIVE CATEGORY
-    {
-        id: "creative-1",
-        name: "Creative Studio",
-        layoutId: "creative",
-        description: "Bold split design for creative professionals",
-        previewColor: "#7c3aed", // Violet
-        themeId: "violet",
-        fontId: "sans"
-    },
-    {
-        id: "creative-2",
-        name: "Creative Bold",
-        layoutId: "creative",
-        description: "Eye-catching design for designers and artists",
-        previewColor: "#dc2626", // Red
-        themeId: "red",
-        fontId: "sans"
-    },
-    {
-        id: "creative-3",
-        name: "Creative Vibrant",
-        layoutId: "creative",
-        description: "Energetic pink tones for creative roles",
-        previewColor: "#db2777", // Pink
-        themeId: "pink",
-        fontId: "sans"
-    },
-
-    // TIMELINE CATEGORY
-    {
-        id: "timeline-1",
-        name: "Career Timeline",
-        layoutId: "timeline",
-        description: "Visual timeline focused on work history",
-        previewColor: "#059669", // Emerald
-        themeId: "emerald",
-        fontId: "sans"
-    },
-    {
-        id: "timeline-2",
-        name: "Timeline Journey",
-        layoutId: "timeline",
-        description: "Story-driven timeline layout",
-        previewColor: "#0284c7", // Sky Blue
-        themeId: "blue",
-        fontId: "sans"
-    },
-
-    // MINIMALIST CATEGORY
+    // 3. MINIMALIST
     {
         id: "minimalist-1",
         name: "Clean Minimalist",
         layoutId: "minimalist",
-        description: "Whitespace-heavy design for readability",
-        previewColor: "#000000", // Black
+        description: "Whitespace-heavy single column",
+        previewColor: "#000000",
         themeId: "slate",
         fontId: "mono"
     },
+    // 4. CREATIVE
     {
-        id: "minimalist-2",
-        name: "Minimalist Elegant",
-        layoutId: "minimalist",
-        description: "Refined simplicity with serif fonts",
-        previewColor: "#374151", // Gray
-        themeId: "slate",
-        fontId: "serif"
-    },
-    {
-        id: "minimalist-3",
-        name: "Minimalist Modern",
-        layoutId: "minimalist",
-        description: "Contemporary minimal with subtle color",
-        previewColor: "#0891b2", // Cyan
-        themeId: "cyan",
+        id: "creative-1",
+        name: "Creative Studio",
+        layoutId: "creative",
+        description: "Bold split design with colored sidebar",
+        previewColor: "#7c3aed",
+        themeId: "violet",
         fontId: "sans"
     },
-
-    // NEW STRUCTURAL LAYOUTS
+    // 5. TIMELINE
+    {
+        id: "timeline-1",
+        name: "Career Timeline",
+        layoutId: "timeline",
+        description: "Visual timeline with card-based sections",
+        previewColor: "#059669",
+        themeId: "emerald",
+        fontId: "sans"
+    },
+    // 6. TWO COLUMN
     {
         id: "twocolumn-1",
         name: "Balanced Two-Column",
@@ -152,6 +72,7 @@ const manualPresets = [
         themeId: "cyan",
         fontId: "sans"
     },
+    // 7. COMPACT
     {
         id: "compact-1",
         name: "Compact Professional",
@@ -161,6 +82,7 @@ const manualPresets = [
         themeId: "slate",
         fontId: "sans"
     },
+    // 8. GRID
     {
         id: "grid-1",
         name: "Grid Magazine",
@@ -170,6 +92,7 @@ const manualPresets = [
         themeId: "indigo",
         fontId: "sans"
     },
+    // 9. HEADER FOCUSED
     {
         id: "header-1",
         name: "Header Dominant",
@@ -179,6 +102,7 @@ const manualPresets = [
         themeId: "blue",
         fontId: "sans"
     },
+    // 10. ASYMMETRIC
     {
         id: "asymmetric-1",
         name: "Asymmetric Modern",
@@ -188,12 +112,83 @@ const manualPresets = [
         themeId: "teal",
         fontId: "sans"
     },
+    // 11. HORIZONTAL
     {
         id: "horizontal-1",
         name: "Horizontal Sections",
         layoutId: "horizontal",
         description: "Full-width stacked sections",
         previewColor: "#475569",
+        themeId: "slate",
+        fontId: "sans"
+    },
+    // 12. TECH MINIMALIST
+    {
+        id: "tech-1",
+        name: "Tech Minimalist",
+        layoutId: "tech",
+        description: "Code-inspired layout for developers",
+        previewColor: "#0f172a",
+        themeId: "slate",
+        fontId: "mono"
+    },
+    // 13. EXECUTIVE SERIF
+    {
+        id: "executive-1",
+        name: "Executive Serif",
+        layoutId: "executive",
+        description: "High-end traditional serif design",
+        previewColor: "#1e293b",
+        themeId: "slate",
+        fontId: "serif"
+    },
+    // 14. BOLD CONTRAST
+    {
+        id: "bold-1",
+        name: "Bold Contrast",
+        layoutId: "bold",
+        description: "High impact with thick borders",
+        previewColor: "#000000",
+        themeId: "monochrome",
+        fontId: "sans"
+    },
+    // 15. SWISS GRID
+    {
+        id: "swiss-1",
+        name: "Swiss Grid",
+        layoutId: "swiss",
+        description: "Structured grid with Helvetica vibes",
+        previewColor: "#dc2626",
+        themeId: "red",
+        fontId: "sans"
+    },
+    // 16. MODERN CARDS
+    {
+        id: "cards-1",
+        name: "Modern Cards",
+        layoutId: "cards",
+        description: "Distinct cards for section separation",
+        previewColor: "#4f46e5",
+        themeId: "indigo",
+        fontId: "sans"
+    },
+    // 17. ATS CLASSIC
+    {
+        id: "atsclassic-1",
+        name: "ATS Classic",
+        layoutId: "atsclassic",
+        description: "Ultra-simple, maximum ATS parseability",
+        previewColor: "#000000",
+        themeId: "slate",
+        fontId: "sans"
+    },
+    // 18. ATS MODERN
+    {
+        id: "atsmodern-1",
+        name: "ATS Modern",
+        layoutId: "atsmodern",
+        description: "Clean ATS-friendly with subtle styling",
+        previewColor: "#334155",
         themeId: "slate",
         fontId: "sans"
     }
@@ -274,7 +269,12 @@ export default function ResumeBuilder() {
         asymmetric: TemplateAsymmetric,
         horizontal: TemplateHorizontalSections,
         atsclassic: TemplateATSClassic,
-        atsmodern: TemplateATSModern
+        atsmodern: TemplateATSModern,
+        tech: TemplateTech,
+        executive: TemplateExecutive,
+        bold: TemplateBold,
+        swiss: TemplateSwiss,
+        cards: TemplateCards
     };
     const SelectedTemplateComponent = templates[selectedPreset.layoutId] || TemplateModern;
 
@@ -432,74 +432,18 @@ export default function ResumeBuilder() {
                                             className="group text-left bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl hover:ring-2 ring-blue-500 transition-all duration-300 flex flex-col h-full"
                                         >
                                             <div className="h-64 bg-slate-50 relative p-4 flex items-center justify-center group-hover:bg-slate-100 transition-colors">
-                                                {/* ACTUAL PREVIEW RENDER */}
+                                                {/* ACTUAL PREVIEW RENDER - Simplified logic for brevity, reusing blocks */}
                                                 <div className="w-full h-full shadow-md bg-white text-[5px] overflow-hidden select-none pointer-events-none transform transition-transform group-hover:scale-[1.02]">
-                                                    {/* Modern Preview */}
-                                                    {preset.layoutId === 'modern' && (
-                                                        <div className="flex h-full">
-                                                            <div className="w-1/3 h-full bg-blue-600 p-2 text-white flex flex-col gap-2">
-                                                                <div className="w-8 h-8 rounded-full bg-white/20"></div>
-                                                                <div className="h-1 w-full bg-white/20 rounded"></div>
-                                                                <div className="h-1 w-2/3 bg-white/20 rounded"></div>
-                                                            </div>
-                                                            <div className="w-2/3 p-2 flex flex-col gap-2">
-                                                                <div className="h-3 w-3/4 bg-slate-200 rounded"></div>
-                                                                <div className="h-1 w-full bg-slate-100 rounded"></div>
-                                                                <div className="h-1 w-full bg-slate-100 rounded"></div>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    {/* Professional Preview */}
-                                                    {preset.layoutId === 'professional' && (
-                                                        <div className="flex flex-col h-full p-3 items-center">
-                                                            <div className="h-4 w-3/4 bg-slate-700 mb-2 rounded"></div>
-                                                            <div className="h-px w-full bg-slate-200 mb-2"></div>
-                                                            <div className="w-full flex flex-col gap-2">
-                                                                <div className="h-2 w-1/4 bg-slate-300 rounded mb-1"></div>
-                                                                <div className="h-1 w-full bg-slate-100 rounded"></div>
-                                                                <div className="h-1 w-full bg-slate-100 rounded"></div>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    {/* Creative Preview */}
-                                                    {preset.layoutId === 'creative' && (
-                                                        <div className="flex h-full">
-                                                            <div className="w-1/4 h-full bg-violet-600 flex flex-col items-center pt-4">
-                                                                <div className="w-8 h-8 bg-white/30 rounded-full"></div>
-                                                            </div>
-                                                            <div className="w-3/4 p-3">
-                                                                <div className="h-6 w-full bg-violet-100 rounded mb-2 text-violet-800 font-bold px-1 flex items-center">NAME</div>
-                                                                <div className="h-1 w-full bg-slate-100 mb-1"></div>
-                                                                <div className="h-1 w-full bg-slate-100"></div>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    {/* Timeline Preview */}
-                                                    {preset.layoutId === 'timeline' && (
-                                                        <div className="flex flex-col h-full p-2 items-center relative">
-                                                            <div className="h-3 w-1/2 bg-emerald-600 rounded mb-2"></div>
-                                                            <div className="absolute top-8 bottom-2 w-px bg-slate-200"></div>
-                                                            <div className="w-full grid grid-cols-2 gap-2 mt-2">
-                                                                <div className="text-right"><div className="h-1 w-full bg-slate-100 inline-block"></div></div>
-                                                                <div><div className="h-1 w-full bg-slate-200 inline-block"></div></div>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    {/* Minimalist Preview */}
-                                                    {preset.layoutId === 'minimalist' && (
-                                                        <div className="flex flex-col h-full p-4">
-                                                            <div className="h-5 w-2/3 bg-slate-900 rounded mb-4"></div>
-                                                            <div className="grid grid-cols-3 gap-2 h-full">
-                                                                <div className="col-span-1 border-r border-slate-100 pr-1">
-                                                                    <div className="h-1 w-full bg-slate-100 mb-1"></div>
-                                                                    <div className="h-1 w-full bg-slate-100 mb-1"></div>
-                                                                </div>
-                                                                <div className="col-span-2">
-                                                                    <div className="h-1 w-full bg-slate-200 mb-1"></div>
-                                                                    <div className="h-1 w-full bg-slate-100 mb-1"></div>
-                                                                    <div className="h-1 w-full bg-slate-100"></div>
-                                                                </div>
-                                                            </div>
+                                                    {preset.layoutId === 'modern' && <div className="h-full w-1/3 bg-blue-600"></div>}
+                                                    {preset.layoutId === 'professional' && <div className="h-4 w-full bg-slate-800 mb-2"></div>}
+                                                    {preset.layoutId === 'creative' && <div className="h-full w-1/4 bg-violet-600"></div>}
+                                                    {/* Default fallback for new templates - just a colored header or structure hint */}
+                                                    {!['modern', 'professional', 'creative'].includes(preset.layoutId) && (
+                                                        <div className="p-2 h-full flex flex-col">
+                                                            <div className="h-4 w-1/2 bg-slate-800 mb-2 rounded" style={{ backgroundColor: preset.previewColor }}></div>
+                                                            <div className="h-0.5 w-full bg-slate-200 mb-1"></div>
+                                                            <div className="h-0.5 w-full bg-slate-200 mb-1"></div>
+                                                            <div className="h-0.5 w-3/4 bg-slate-200"></div>
                                                         </div>
                                                     )}
                                                 </div>
