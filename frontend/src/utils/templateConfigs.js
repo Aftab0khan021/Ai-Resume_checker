@@ -2,13 +2,6 @@
 // TEMPLATE CONFIGURATIONS
 // ==========================================
 
-// Base Colors (Fallbacks)
-const COLORS = {
-    slate: { primary: "#0f172a", secondary: "#334155", text: "#1e293b", bg: "#ffffff" },
-    blue: { primary: "#1e3a8a", secondary: "#1d4ed8", text: "#172554", bg: "#eff6ff" },
-    tech: { primary: "#0f172a", secondary: "#1e293b", text: "#334155", bg: "#ffffff" },
-};
-
 export const templateConfigs = {
     // 1. MODERN (Sidebar Left)
     modern: {

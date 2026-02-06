@@ -5,7 +5,6 @@ import { Printer, Layout, X, Eye, ChevronLeft, Check } from "lucide-react";
 // NEW ENGINE IMPORTS
 import ResumeRenderer from "../components/renderer/ResumeRenderer";
 import { templateConfigs } from "../utils/templateConfigs";
-import { getThemeStyle, getFontStyle } from "../utils/templateThemes";
 
 // MANUAL PRESET DEFINITIONS - Kept for Gallery Display Logic
 const manualPresets = [
@@ -92,10 +91,7 @@ export default function ResumeBuilder() {
     };
 
     // Filter Logic for Gallery
-    const [filterCategory, setFilterCategory] = useState("all");
-    const filteredPresets = filterCategory === "all"
-        ? manualPresets
-        : manualPresets.filter(p => p.layoutId.includes(filterCategory));
+    const filteredPresets = manualPresets;
 
     if (viewMode === "edit") {
         return (
