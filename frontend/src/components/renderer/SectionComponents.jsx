@@ -7,19 +7,24 @@ import { Mail, Phone, Hash, Globe, MapPin, Linkedin, Github } from 'lucide-react
 
 // 1. SECTION HEADER
 export const SectionHeader = ({ title, styles = {}, icon: Icon }) => {
-    // Default styles if not provided
     const headerStyle = {
         fontSize: styles.fontSize || '1.25rem',
-        fontWeight: styles.fontWeight || 'bold',
+        fontWeight: styles.fontWeight || '700',
         color: styles.color || 'inherit',
         borderBottom: styles.borderBottom || 'none',
         borderLeft: styles.borderLeft || 'none',
+        borderTop: styles.borderTop || 'none',
         paddingBottom: styles.paddingBottom || '0',
         paddingLeft: styles.paddingLeft || '0',
+        paddingTop: styles.paddingTop || '0',
         marginBottom: styles.marginBottom || '1rem',
+        marginTop: styles.marginTop || '0',
         textTransform: styles.textTransform || 'none',
         letterSpacing: styles.letterSpacing || 'normal',
-        display: 'flex',
+        textAlign: styles.textAlign || 'left',
+        backgroundColor: styles.backgroundColor || 'transparent',
+        padding: styles.padding || undefined,
+        display: styles.display || 'flex',
         alignItems: 'center',
         gap: '0.5rem',
         ...styles.customCss
@@ -50,7 +55,7 @@ export const ContactItem = ({ type, value, styles = {} }) => {
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', ...styles.container }} className={styles.className}>
             <IconComp size={styles.iconSize || 14} style={{ color: styles.iconColor }} />
-            <span style={{ fontSize: styles.fontSize || '0.875rem', color: styles.textColor }}>{value}</span>
+            <span style={{ fontSize: styles.fontSize || '0.875rem', color: styles.textColor, fontWeight: styles.fontWeight }}>{value}</span>
         </div>
     );
 };
@@ -60,12 +65,22 @@ export const EntryItem = ({ title, subtitle, date, location, description, styles
     return (
         <div style={{ marginBottom: styles.marginBottom || '1.5rem', ...styles.container }} className={styles.className}>
             {/* Header Row */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.25rem' }}>
-                <h3 style={{ fontWeight: 'bold', fontSize: styles.titleSize || '1rem', color: styles.titleColor }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.25rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <h3 style={{
+                    fontWeight: styles.titleWeight || '700',
+                    fontSize: styles.titleSize || '1rem',
+                    color: styles.titleColor || 'inherit',
+                    margin: 0
+                }}>
                     {title}
                 </h3>
                 {date && (
-                    <span style={{ fontSize: styles.dateSize || '0.875rem', color: styles.dateColor, fontWeight: styles.dateWeight }}>
+                    <span style={{
+                        fontSize: styles.dateSize || '0.875rem',
+                        color: styles.dateColor || 'inherit',
+                        fontWeight: styles.dateWeight || '400',
+                        fontStyle: styles.dateStyle || 'normal'
+                    }}>
                         {date}
                     </span>
                 )}
@@ -73,14 +88,25 @@ export const EntryItem = ({ title, subtitle, date, location, description, styles
 
             {/* Subtitle Row */}
             {subtitle && (
-                <div style={{ fontSize: styles.subtitleSize || '0.9rem', color: styles.subtitleColor, marginBottom: '0.5rem', fontStyle: styles.subtitleStyle }}>
+                <div style={{
+                    fontSize: styles.subtitleSize || '0.9rem',
+                    color: styles.subtitleColor || 'inherit',
+                    marginBottom: '0.5rem',
+                    fontStyle: styles.subtitleStyle || 'normal',
+                    fontWeight: styles.subtitleWeight || '400'
+                }}>
                     {subtitle} {location && `• ${location}`}
                 </div>
             )}
 
             {/* Description */}
             {description && (
-                <p style={{ fontSize: styles.descSize || '0.875rem', lineHeight: styles.lineHeight || '1.5', color: styles.descColor }}>
+                <p style={{
+                    fontSize: styles.descSize || '0.875rem',
+                    lineHeight: styles.lineHeight || '1.6',
+                    color: styles.descColor || 'inherit',
+                    margin: 0
+                }}>
                     {description}
                 </p>
             )}
@@ -90,7 +116,6 @@ export const EntryItem = ({ title, subtitle, date, location, description, styles
 
 // 4. SKILLS LIST
 export const SkillList = ({ skills, styles = {} }) => {
-    // If skills is a string, split it. If array, use as is.
     const skillArray = typeof skills === 'string' ? skills.split(',').map(s => s.trim()) : (skills || []);
 
     if (styles.variant === 'tags') {
@@ -103,7 +128,7 @@ export const SkillList = ({ skills, styles = {} }) => {
                         padding: '0.25rem 0.75rem',
                         borderRadius: styles.borderRadius || '9999px',
                         fontSize: styles.fontSize || '0.75rem',
-                        fontWeight: '600'
+                        fontWeight: styles.fontWeight || '600'
                     }}>
                         {skill}
                     </span>
@@ -116,7 +141,12 @@ export const SkillList = ({ skills, styles = {} }) => {
         return (
             <ul style={{ listStyleType: 'disc', paddingLeft: '1.25rem', margin: 0 }}>
                 {skillArray.map((skill, idx) => (
-                    <li key={idx} style={{ fontSize: styles.fontSize || '0.875rem', color: styles.color, marginBottom: '0.25rem' }}>
+                    <li key={idx} style={{
+                        fontSize: styles.fontSize || '0.875rem',
+                        color: styles.color || 'inherit',
+                        marginBottom: '0.25rem',
+                        lineHeight: '1.5'
+                    }}>
                         {skill}
                     </li>
                 ))}
@@ -126,7 +156,12 @@ export const SkillList = ({ skills, styles = {} }) => {
 
     // Default: Comma separated text
     return (
-        <p style={{ fontSize: styles.fontSize || '0.875rem', lineHeight: '1.6', color: styles.color }}>
+        <p style={{
+            fontSize: styles.fontSize || '0.875rem',
+            lineHeight: '1.6',
+            color: styles.color || 'inherit',
+            margin: 0
+        }}>
             {skillArray.join(styles.separator || ', ')}
         </p>
     );
@@ -137,7 +172,13 @@ export const SummarySection = ({ text, styles = {} }) => {
     if (!text) return null;
     return (
         <div style={{ marginBottom: styles.marginBottom || '1.5rem', ...styles.container }}>
-            <p style={{ fontSize: styles.fontSize || '0.875rem', lineHeight: styles.lineHeight || '1.6', color: styles.color, fontStyle: styles.fontStyle }}>
+            <p style={{
+                fontSize: styles.fontSize || '0.875rem',
+                lineHeight: styles.lineHeight || '1.6',
+                color: styles.color || 'inherit',
+                fontStyle: styles.fontStyle || 'normal',
+                margin: 0
+            }}>
                 {text}
             </p>
         </div>
