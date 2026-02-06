@@ -1,5 +1,5 @@
 // ==========================================
-// TEMPLATE CONFIGURATIONS
+// TEMPLATE CONFIGURATIONS - ALL SECTIONS INCLUDED
 // ==========================================
 
 export const templateConfigs = {
@@ -25,6 +25,11 @@ export const templateConfigs = {
                 styles: {
                     header: { color: "white", fontSize: "1.25rem", fontWeight: "700", borderBottom: "1px solid rgba(255,255,255,0.3)", paddingBottom: "0.5rem", marginBottom: "1rem" },
                     list: { color: "white", variant: "bullet", fontSize: "0.875rem" }
+                }
+            },
+            summary: {
+                styles: {
+                    header: { color: "#2563eb", fontSize: "1.5rem", fontWeight: "700", marginBottom: "1rem" }
                 }
             },
             experience: {
@@ -54,13 +59,18 @@ export const templateConfigs = {
         layout: "single-column",
         fontId: "serif",
         colors: { primary: "#334155" },
-        sectionOrder: ["header", "summary", "experience", "education", "skills"],
+        sectionOrder: ["header", "summary", "experience", "education", "skills", "projects"],
         sections: {
             header: {
                 styles: {
                     container: { textAlign: "center", borderBottom: "1px solid #cbd5e1", paddingBottom: "2rem", marginBottom: "2rem" },
                     name: { fontSize: "3rem", fontWeight: "700", textTransform: "uppercase", letterSpacing: "2px" },
                     contactRow: { justifyContent: "center", gap: "1.5rem" }
+                }
+            },
+            summary: {
+                styles: {
+                    header: { textTransform: "uppercase", letterSpacing: "1px", fontWeight: "700", borderBottom: "1px solid #e2e8f0", paddingBottom: "0.5rem", fontSize: "1.1rem", marginBottom: "1rem" }
                 }
             },
             experience: {
@@ -79,6 +89,12 @@ export const templateConfigs = {
                 styles: {
                     header: { textTransform: "uppercase", letterSpacing: "1px", fontWeight: "700", borderBottom: "1px solid #e2e8f0", paddingBottom: "0.5rem", fontSize: "1.1rem", marginBottom: "1rem" }
                 }
+            },
+            projects: {
+                styles: {
+                    header: { textTransform: "uppercase", letterSpacing: "1px", fontWeight: "700", borderBottom: "1px solid #e2e8f0", paddingBottom: "0.5rem", fontSize: "1.1rem", marginBottom: "1rem" },
+                    item: { titleWeight: "700" }
+                }
             }
         }
     },
@@ -88,12 +104,17 @@ export const templateConfigs = {
         id: "minimalist",
         layout: "single-column",
         fontId: "mono",
-        sectionOrder: ["header", "skills", "experience", "education"],
+        sectionOrder: ["header", "summary", "skills", "experience", "education", "projects"],
         sections: {
             header: {
                 styles: {
                     container: { marginBottom: "3rem" },
                     name: { fontSize: "2rem", fontWeight: "400" }
+                }
+            },
+            summary: {
+                styles: {
+                    header: { fontSize: "1.25rem", fontWeight: "600", marginBottom: "1.5rem" }
                 }
             },
             experience: {
@@ -112,6 +133,12 @@ export const templateConfigs = {
                 styles: {
                     header: { fontSize: "1.25rem", fontWeight: "600", marginBottom: "1.5rem" }
                 }
+            },
+            projects: {
+                styles: {
+                    header: { fontSize: "1.25rem", fontWeight: "600", marginBottom: "1.5rem" },
+                    item: { titleWeight: "600" }
+                }
             }
         }
     },
@@ -123,7 +150,7 @@ export const templateConfigs = {
         sidebarWidth: "30%",
         colors: { sidebarBg: "#7c3aed" },
         sidebarOrder: ["header", "contact", "skills"],
-        mainOrder: ["summary", "experience", "education"],
+        mainOrder: ["summary", "experience", "education", "projects"],
         sections: {
             header: {
                 styles: {
@@ -143,6 +170,11 @@ export const templateConfigs = {
                     list: { color: "white", variant: "bullet" }
                 }
             },
+            summary: {
+                styles: {
+                    header: { color: "#7c3aed", fontSize: "1.8rem", fontWeight: "900", marginBottom: "1.5rem" }
+                }
+            },
             experience: {
                 styles: {
                     header: { color: "#7c3aed", fontSize: "1.8rem", fontWeight: "900", marginBottom: "1.5rem" },
@@ -154,6 +186,12 @@ export const templateConfigs = {
                     header: { color: "#7c3aed", fontSize: "1.8rem", fontWeight: "900", marginBottom: "1.5rem" },
                     item: { titleWeight: "700", subtitleWeight: "600" }
                 }
+            },
+            projects: {
+                styles: {
+                    header: { color: "#7c3aed", fontSize: "1.8rem", fontWeight: "900", marginBottom: "1.5rem" },
+                    item: { titleWeight: "700" }
+                }
             }
         }
     },
@@ -162,12 +200,17 @@ export const templateConfigs = {
     timeline: {
         id: "timeline",
         layout: "single-column",
-        sectionOrder: ["header", "experience", "education", "skills"],
+        sectionOrder: ["header", "summary", "experience", "education", "skills", "projects"],
         sections: {
             header: {
                 styles: {
                     name: { fontSize: "2.5rem", fontWeight: "700", marginBottom: "0.5rem" },
                     container: { marginBottom: "2rem" }
+                }
+            },
+            summary: {
+                styles: {
+                    header: { fontSize: "1.5rem", fontWeight: "700", marginBottom: "1.5rem" }
                 }
             },
             experience: {
@@ -188,6 +231,13 @@ export const templateConfigs = {
                 styles: {
                     header: { fontSize: "1.5rem", fontWeight: "700", marginBottom: "1.5rem" }
                 }
+            },
+            projects: {
+                styles: {
+                    container: { borderLeft: "2px solid #e2e8f0", paddingLeft: "1.5rem", marginLeft: "1rem" },
+                    header: { fontSize: "1.5rem", fontWeight: "700", marginBottom: "1.5rem" },
+                    item: { marginBottom: "2rem", titleWeight: "700" }
+                }
             }
         }
     },
@@ -197,19 +247,25 @@ export const templateConfigs = {
         id: "twocolumn",
         layout: "grid",
         gridColumns: "1fr 1fr",
-        sectionOrder: ["header", "summary", "experience", "education", "skills"],
+        sectionOrder: ["header", "summary", "experience", "education", "skills", "projects"],
         gridSpans: {
             header: "1 / -1",
             summary: "1 / -1",
             experience: "1 / 2",
             education: "2 / 3",
-            skills: "1 / -1"
+            skills: "1 / 2",
+            projects: "2 / 3"
         },
         sections: {
             header: {
                 styles: {
                     name: { fontSize: "2.5rem", fontWeight: "700" },
                     container: { marginBottom: "2rem" }
+                }
+            },
+            summary: {
+                styles: {
+                    header: { fontSize: "1.5rem", fontWeight: "700", marginBottom: "1.5rem" }
                 }
             },
             experience: {
@@ -228,6 +284,12 @@ export const templateConfigs = {
                 styles: {
                     header: { fontSize: "1.5rem", fontWeight: "700", marginBottom: "1.5rem" }
                 }
+            },
+            projects: {
+                styles: {
+                    header: { fontSize: "1.5rem", fontWeight: "700", marginBottom: "1.5rem" },
+                    item: { titleWeight: "700" }
+                }
             }
         }
     },
@@ -237,12 +299,17 @@ export const templateConfigs = {
         id: "compact",
         layout: "single-column",
         pagePadding: "1.5rem",
-        sectionOrder: ["header", "skills", "experience", "education"],
+        sectionOrder: ["header", "summary", "skills", "experience", "education", "projects"],
         sections: {
             header: {
                 styles: {
                     name: { fontSize: "1.5rem", fontWeight: "700" },
                     container: { borderBottom: "2px solid #334155", paddingBottom: "1rem", marginBottom: "1.5rem" }
+                }
+            },
+            summary: {
+                styles: {
+                    header: { fontSize: "1.1rem", fontWeight: "700", marginBottom: "0.75rem" }
                 }
             },
             skills: {
@@ -262,6 +329,12 @@ export const templateConfigs = {
                     header: { fontSize: "1.1rem", fontWeight: "700", marginBottom: "0.75rem" },
                     item: { titleWeight: "700", titleSize: "0.95rem", subtitleWeight: "500" }
                 }
+            },
+            projects: {
+                styles: {
+                    header: { fontSize: "1.1rem", fontWeight: "700", marginBottom: "0.75rem" },
+                    item: { titleWeight: "700", titleSize: "0.95rem" }
+                }
             }
         }
     },
@@ -271,18 +344,25 @@ export const templateConfigs = {
         id: "grid",
         layout: "grid",
         gridColumns: "1fr 2fr",
-        sectionOrder: ["header", "skills", "experience", "education"],
+        sectionOrder: ["header", "skills", "education", "experience", "projects", "summary"],
         gridSpans: {
             header: "1 / -1",
             skills: "1 / 2",
             education: "1 / 2",
-            experience: "2 / 3"
+            experience: "2 / 3",
+            projects: "2 / 3",
+            summary: "1 / -1"
         },
         sections: {
             header: {
                 styles: {
                     name: { fontSize: "3rem", fontWeight: "900" },
                     container: { marginBottom: "2rem" }
+                }
+            },
+            summary: {
+                styles: {
+                    header: { fontSize: "1.5rem", fontWeight: "700", marginBottom: "1rem" }
                 }
             },
             experience: {
@@ -301,6 +381,12 @@ export const templateConfigs = {
                 styles: {
                     header: { fontSize: "1.25rem", fontWeight: "700", marginBottom: "1rem" }
                 }
+            },
+            projects: {
+                styles: {
+                    header: { fontSize: "1.75rem", fontWeight: "700", marginBottom: "1.5rem" },
+                    item: { titleWeight: "700" }
+                }
             }
         }
     },
@@ -310,7 +396,7 @@ export const templateConfigs = {
         id: "headerfocused",
         layout: "single-column",
         colors: { primary: "white", background: "#f8fafc" },
-        sectionOrder: ["header", "experience", "skills"],
+        sectionOrder: ["header", "summary", "experience", "skills", "education", "projects"],
         sections: {
             header: {
                 styles: {
@@ -318,6 +404,11 @@ export const templateConfigs = {
                     name: { fontSize: "3.5rem", fontWeight: "900", color: "white" },
                     contactRow: { justifyContent: "center" },
                     contactItem: { textColor: "rgba(255,255,255,0.8)", iconColor: "white" }
+                }
+            },
+            summary: {
+                styles: {
+                    header: { fontSize: "1.5rem", fontWeight: "700", marginBottom: "1.5rem" }
                 }
             },
             experience: {
@@ -330,6 +421,18 @@ export const templateConfigs = {
                 styles: {
                     header: { fontSize: "1.5rem", fontWeight: "700", marginBottom: "1.5rem" }
                 }
+            },
+            education: {
+                styles: {
+                    header: { fontSize: "1.5rem", fontWeight: "700", marginBottom: "1.5rem" },
+                    item: { titleWeight: "700", subtitleWeight: "600" }
+                }
+            },
+            projects: {
+                styles: {
+                    header: { fontSize: "1.5rem", fontWeight: "700", marginBottom: "1.5rem" },
+                    item: { titleWeight: "700" }
+                }
             }
         }
     },
@@ -340,8 +443,8 @@ export const templateConfigs = {
         layout: "sidebar-right",
         sidebarWidth: "30%",
         colors: { sidebarBg: "#f1f5f9" },
-        mainOrder: ["header", "summary", "experience"],
-        sidebarOrder: ["contact", "skills", "education", "projects"],
+        mainOrder: ["header", "summary", "experience", "projects"],
+        sidebarOrder: ["contact", "skills", "education"],
         sections: {
             header: {
                 styles: {
@@ -353,6 +456,11 @@ export const templateConfigs = {
                 styles: {
                     header: { fontSize: "1.1rem", fontWeight: "700", marginBottom: "1rem" },
                     contactItem: { fontSize: "0.875rem" }
+                }
+            },
+            summary: {
+                styles: {
+                    header: { fontSize: "1.75rem", fontWeight: "700", marginBottom: "1.5rem" }
                 }
             },
             experience: {
@@ -374,7 +482,7 @@ export const templateConfigs = {
             },
             projects: {
                 styles: {
-                    header: { fontSize: "1.1rem", fontWeight: "700", marginBottom: "1rem" },
+                    header: { fontSize: "1.75rem", fontWeight: "700", marginBottom: "1.5rem" },
                     item: { titleWeight: "700" }
                 }
             }
@@ -385,12 +493,17 @@ export const templateConfigs = {
     horizontal: {
         id: "horizontal",
         layout: "single-column",
-        sectionOrder: ["header", "skills", "experience", "education"],
+        sectionOrder: ["header", "summary", "skills", "experience", "education", "projects"],
         sections: {
             header: {
                 styles: {
                     name: { fontSize: "2.5rem", fontWeight: "700" },
                     container: { marginBottom: "2rem" }
+                }
+            },
+            summary: {
+                styles: {
+                    header: { fontSize: "1.5rem", fontWeight: "700", marginBottom: "1rem" }
                 }
             },
             skills: {
@@ -411,6 +524,12 @@ export const templateConfigs = {
                     header: { fontSize: "1.5rem", fontWeight: "700", marginBottom: "1.5rem" },
                     item: { titleWeight: "700", subtitleWeight: "500" }
                 }
+            },
+            projects: {
+                styles: {
+                    header: { fontSize: "1.5rem", fontWeight: "700", marginBottom: "1.5rem" },
+                    item: { titleWeight: "700" }
+                }
             }
         }
     },
@@ -421,12 +540,18 @@ export const templateConfigs = {
         layout: "single-column",
         fontId: "mono",
         colors: { text: "#334155" },
-        sectionOrder: ["header", "skills", "experience", "projects", "education"],
+        sectionOrder: ["header", "summary", "skills", "experience", "projects", "education"],
         sections: {
             header: {
                 styles: {
                     container: { borderBottom: "4px solid #334155", paddingBottom: "1rem", marginBottom: "2rem" },
                     name: { fontSize: "2rem", fontWeight: "700" }
+                }
+            },
+            summary: {
+                title: "// SUMMARY",
+                styles: {
+                    header: { color: "#2563eb", fontSize: "1.25rem", fontWeight: "700", fontFamily: "monospace", marginBottom: "1rem" }
                 }
             },
             skills: {
@@ -474,6 +599,11 @@ export const templateConfigs = {
                     container: { textAlign: "center", borderBottom: "3px double #d6d3d1", paddingBottom: "2rem", marginBottom: "2rem" },
                     name: { fontSize: "3rem", fontWeight: "700" },
                     contactRow: { justifyContent: "center" }
+                }
+            },
+            summary: {
+                styles: {
+                    header: { textAlign: "center", textTransform: "uppercase", letterSpacing: "3px", fontSize: "1.2rem", fontWeight: "700", color: "#78716c", marginBottom: "1rem" }
                 }
             },
             skills: {
@@ -623,12 +753,18 @@ export const templateConfigs = {
         id: "cards",
         layout: "single-column",
         colors: { background: "#f3f4f6" },
-        sectionOrder: ["header", "skills", "experience", "education"],
+        sectionOrder: ["header", "summary", "skills", "experience", "education", "projects"],
         sections: {
             header: {
                 styles: {
                     container: { backgroundColor: "white", padding: "2rem", borderRadius: "1rem", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)", marginBottom: "1.5rem" },
                     name: { fontSize: "2.5rem", fontWeight: "700" }
+                }
+            },
+            summary: {
+                styles: {
+                    container: { backgroundColor: "white", padding: "2rem", borderRadius: "1rem", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)", marginBottom: "1.5rem" },
+                    header: { fontSize: "1.5rem", fontWeight: "700", marginBottom: "1rem" }
                 }
             },
             skills: {
@@ -651,6 +787,13 @@ export const templateConfigs = {
                     header: { fontSize: "1.5rem", fontWeight: "700", marginBottom: "1rem" },
                     item: { titleWeight: "700", subtitleWeight: "600" }
                 }
+            },
+            projects: {
+                styles: {
+                    container: { backgroundColor: "white", padding: "2rem", borderRadius: "1rem", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)", marginBottom: "1.5rem" },
+                    header: { fontSize: "1.5rem", fontWeight: "700", marginBottom: "1rem" },
+                    item: { titleWeight: "700" }
+                }
             }
         }
     },
@@ -660,13 +803,18 @@ export const templateConfigs = {
         id: "atsclassic",
         layout: "single-column",
         fontId: "sans",
-        sectionOrder: ["header", "education", "skills", "experience", "projects"],
+        sectionOrder: ["header", "summary", "education", "skills", "experience", "projects"],
         sections: {
             header: {
                 styles: {
                     container: { textAlign: "center", borderBottom: "1px solid black", paddingBottom: "1rem", marginBottom: "1.5rem" },
                     name: { fontSize: "1.75rem", fontWeight: "700", textTransform: "uppercase" },
                     contactRow: { justifyContent: "center", gap: "1rem" }
+                }
+            },
+            summary: {
+                styles: {
+                    header: { textTransform: "uppercase", fontSize: "1rem", fontWeight: "700", borderBottom: "1px solid black", paddingBottom: "0.25rem", marginBottom: "1rem" }
                 }
             },
             experience: {
@@ -701,13 +849,18 @@ export const templateConfigs = {
         id: "atsmodern",
         layout: "single-column",
         fontId: "sans",
-        sectionOrder: ["header", "summary", "skills", "experience", "education"],
+        sectionOrder: ["header", "summary", "skills", "experience", "education", "projects"],
         sections: {
             header: {
                 styles: {
                     container: { borderBottom: "2px solid #e2e8f0", paddingBottom: "1.5rem", marginBottom: "2rem" },
                     name: { color: "#334155", fontSize: "2.5rem", fontWeight: "700" },
                     contactRow: { gap: "1rem" }
+                }
+            },
+            summary: {
+                styles: {
+                    header: { color: "#334155", fontSize: "1.25rem", fontWeight: "700", marginBottom: "1rem" }
                 }
             },
             skills: {
@@ -726,6 +879,12 @@ export const templateConfigs = {
                 styles: {
                     header: { color: "#334155", fontSize: "1.25rem", fontWeight: "700", marginBottom: "1rem" },
                     item: { titleWeight: "700", subtitleWeight: "600" }
+                }
+            },
+            projects: {
+                styles: {
+                    header: { color: "#334155", fontSize: "1.25rem", fontWeight: "700", marginBottom: "1rem" },
+                    item: { titleWeight: "700" }
                 }
             }
         }
