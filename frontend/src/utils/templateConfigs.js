@@ -285,13 +285,19 @@ export const templateConfigs = {
         layout: "single-column",
         fontId: "serif",
         colors: { background: "#fdfbf7", text: "#1c1917" },
-        sectionOrder: ["header", "summary", "experience", "education"],
+        sectionOrder: ["header", "summary", "experience", "education", "skills", "projects"],
         sections: {
             header: {
                 styles: {
                     container: { textAlign: "center", borderBottom: "3px double #d6d3d1", paddingBottom: "2rem", marginBottom: "2rem" },
                     name: { fontSize: "3rem" },
                     contactRow: { justifyContent: "center" }
+                }
+            },
+            skills: {
+                styles: {
+                    header: { textAlign: "center", textTransform: "uppercase", letterSpacing: "3px", fontSize: "1.2rem", color: "#78716c", marginBottom: "1rem" },
+                    list: { variant: "text", separator: " • ", fontSize: "0.95rem" }
                 }
             },
             experience: {
@@ -306,19 +312,20 @@ export const templateConfigs = {
     bold: {
         id: "bold",
         layout: "grid",
-        gridColumns: "30% 70%",
+        gridColumns: "1fr 2fr",
         globalStyles: { border: "8px solid black" },
-        sectionOrder: ["header", "skills", "education", "experience"],
+        sectionOrder: ["header", "skills", "education", "experience", "projects"],
         gridSpans: {
             header: "1 / -1",
             skills: "1 / 2",
             education: "1 / 2",
-            experience: "2 / 3"
+            experience: "2 / 3",
+            projects: "2 / 3"
         },
         sections: {
             header: {
                 styles: {
-                    container: { backgroundColor: "black", padding: "2rem", color: "white", margin: "-2.5rem -2.5rem 0 -2.5rem" },
+                    container: { backgroundColor: "black", padding: "2rem", color: "white", margin: "-2.5rem -2.5rem 0 -2.5rem", marginBottom: "2rem" },
                     name: { color: "white", textTransform: "uppercase", fontWeight: "900", fontSize: "3rem" },
                     contactRow: { gap: "1rem" },
                     contactItem: { iconColor: "white", textColor: "white" }
@@ -326,8 +333,26 @@ export const templateConfigs = {
             },
             skills: {
                 styles: {
-                    header: { backgroundColor: "black", color: "white", padding: "0.5rem 1rem", display: "inline-block", marginBottom: "1rem" },
-                    list: { variant: "bullet" }
+                    header: { backgroundColor: "black", color: "white", padding: "0.5rem 1rem", marginBottom: "1rem", fontWeight: "bold" },
+                    list: { variant: "bullet", fontSize: "0.9rem" }
+                }
+            },
+            education: {
+                title: "EDUCATION",
+                styles: {
+                    header: { backgroundColor: "black", color: "white", padding: "0.5rem 1rem", marginBottom: "1rem", fontWeight: "bold" }
+                }
+            },
+            experience: {
+                title: "EXPERIENCE",
+                styles: {
+                    header: { backgroundColor: "black", color: "white", padding: "0.5rem 1rem", marginBottom: "1rem", fontWeight: "bold" }
+                }
+            },
+            projects: {
+                title: "PROJECTS",
+                styles: {
+                    header: { backgroundColor: "black", color: "white", padding: "0.5rem 1rem", marginBottom: "1rem", fontWeight: "bold" }
                 }
             }
         }
@@ -339,13 +364,14 @@ export const templateConfigs = {
         layout: "grid",
         globalStyles: { padding: "3rem" },
         gridColumns: "1fr 2fr",
-        sectionOrder: ["header", "contact", "education", "experience", "summary"],
+        sectionOrder: ["header", "contact", "skills", "education", "experience", "projects"],
         gridSpans: {
             header: "1 / -1",
             contact: "1 / 2",
+            skills: "1 / 2",
             education: "1 / 2",
             experience: "2 / 3",
-            summary: "2 / 3"
+            projects: "2 / 3"
         },
         sections: {
             header: {
@@ -360,6 +386,31 @@ export const templateConfigs = {
                 styles: {
                     header: { color: "#dc2626", textTransform: "uppercase", fontSize: "0.9rem", fontWeight: "bold", marginBottom: "1rem" },
                     contactItem: { fontSize: "0.875rem" }
+                }
+            },
+            skills: {
+                title: "SKILLS",
+                styles: {
+                    header: { color: "#dc2626", textTransform: "uppercase", fontSize: "0.9rem", fontWeight: "bold", marginBottom: "1rem" },
+                    list: { variant: "bullet", fontSize: "0.875rem" }
+                }
+            },
+            education: {
+                title: "EDUCATION",
+                styles: {
+                    header: { color: "#dc2626", textTransform: "uppercase", fontSize: "0.9rem", fontWeight: "bold", marginBottom: "1rem" }
+                }
+            },
+            experience: {
+                title: "EXPERIENCE",
+                styles: {
+                    header: { color: "#0f172a", textTransform: "uppercase", fontSize: "1.25rem", fontWeight: "bold", marginBottom: "1.5rem" }
+                }
+            },
+            projects: {
+                title: "PROJECTS",
+                styles: {
+                    header: { color: "#0f172a", textTransform: "uppercase", fontSize: "1.25rem", fontWeight: "bold", marginBottom: "1.5rem" }
                 }
             }
         }
