@@ -351,6 +351,10 @@ Return a JSON with this EXACT structure:
         ats_breakdown = payload.get("ats_breakdown", {})
         ats_red_flags = list(payload.get("ats_red_flags", []))
         ats_green_flags = list(payload.get("ats_green_flags", []))
+        
+        # DEBUG: Log what AI actually returned
+        logger.info(f"AI returned ats_breakdown: {ats_breakdown}")
+        logger.info(f"Breakdown is dict: {isinstance(ats_breakdown, dict)}, length: {len(ats_breakdown) if isinstance(ats_breakdown, dict) else 0}")
 
         return {
             "match_percentage": match_percentage,
