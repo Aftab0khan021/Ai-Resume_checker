@@ -48,7 +48,7 @@ export default function ResumeRenderer({ data, config }) {
 
             case 'contact':
                 return (
-                    <section key="contact" style={styles.container}>
+                    <section key="contact" style={{ marginBottom: '2.5rem', ...styles.container }}>
                         <SectionHeader title={sectionConfig.title || "Contact"} styles={styles.header} />
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                             <ContactItem type="email" value={data.email} styles={styles.contactItem} />
@@ -60,7 +60,7 @@ export default function ResumeRenderer({ data, config }) {
 
             case 'summary':
                 return data.summary ? (
-                    <section key="summary" style={styles.container}>
+                    <section key="summary" style={{ marginBottom: '2.5rem', ...styles.container }}>
                         <SectionHeader title={sectionConfig.title || "Summary"} styles={styles.header} />
                         <SummarySection text={data.summary} styles={styles.text} />
                     </section>
@@ -68,7 +68,7 @@ export default function ResumeRenderer({ data, config }) {
 
             case 'experience':
                 return data.experience?.length > 0 ? (
-                    <section key="experience" style={styles.container}>
+                    <section key="experience" style={{ marginBottom: '2.5rem', ...styles.container }}>
                         <SectionHeader title={sectionConfig.title || "Experience"} styles={styles.header} />
                         {data.experience.map((exp, idx) => (
                             <EntryItem
@@ -85,7 +85,7 @@ export default function ResumeRenderer({ data, config }) {
 
             case 'education':
                 return data.education?.length > 0 ? (
-                    <section key="education" style={styles.container}>
+                    <section key="education" style={{ marginBottom: '2.5rem', ...styles.container }}>
                         <SectionHeader title={sectionConfig.title || "Education"} styles={styles.header} />
                         {data.education.map((edu, idx) => (
                             <EntryItem
@@ -101,7 +101,7 @@ export default function ResumeRenderer({ data, config }) {
 
             case 'skills':
                 return data.skills ? (
-                    <section key="skills" style={styles.container}>
+                    <section key="skills" style={{ marginBottom: '2.5rem', ...styles.container }}>
                         <SectionHeader title={sectionConfig.title || "Skills"} styles={styles.header} />
                         <SkillList skills={data.skills} styles={styles.list} />
                     </section>
@@ -109,7 +109,7 @@ export default function ResumeRenderer({ data, config }) {
 
             case 'projects':
                 return data.projects?.length > 0 ? (
-                    <section key="projects" style={styles.container}>
+                    <section key="projects" style={{ marginBottom: '2.5rem', ...styles.container }}>
                         <SectionHeader title={sectionConfig.title || "Projects"} styles={styles.header} />
                         {data.projects.map((proj, idx) => (
                             <EntryItem
