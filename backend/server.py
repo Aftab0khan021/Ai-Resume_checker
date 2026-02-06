@@ -280,7 +280,7 @@ async def analyze_with_ai(resume_text: str, job_description: str, target_job_tit
         
         prompt = f"""
 You are an expert AI Resume Evaluator and ATS (Applicant Tracking System) Specialist.
-Analyze the following resume against the job description.
+Analyze the following resume against the job description with DETAILED ATS scoring.
 
 TARGET JOB TITLE: {target_job_title}
 
@@ -290,10 +290,20 @@ RESUME:
 JOB DESCRIPTION:
 {job_description[:3000]}...
 
-Evaluate specifically for:
-1. Keyword match (Hard/Soft skills).
-2. ATS Formatting (readability, standard sections, lack of graphics/tables).
-3. Quantification of achievements (Use of numbers, %, $, metrics).
+Provide a comprehensive ATS analysis with these specific categories:
+
+1. **Formatting Score** (0-100): Clear sections, proper headings, standard structure, no tables/images
+2. **Keyword Density** (0-100): Relevant keywords from job description present in resume
+3. **Contact Info Score** (0-100): Email, phone, LinkedIn clearly visible
+4. **Readability Score** (0-100): Clear language, appropriate length, bullet points
+5. **Section Completeness** (0-100): Has Experience, Education, Skills, Summary sections
+6. **Quantification Score** (0-100): Use of numbers, percentages, metrics in achievements
+7. **Length Score** (0-100): Appropriate length (1-2 pages ideal)
+8. **Professional Language** (0-100): Industry-appropriate terminology, no casual language
+
+Also identify:
+- **Red Flags**: Specific ATS issues (e.g., "Contains tables", "Missing contact info", "Too many pages")
+- **Green Flags**: What's working well (e.g., "Clear section headers", "Quantified achievements")
 
 Return a JSON with this EXACT structure:
 {{
@@ -302,8 +312,20 @@ Return a JSON with this EXACT structure:
   "missing_skills": ["skill1", "skill2"],
   "recommendations": ["Actionable specific advice 1", "Actionable advice 2"],
   "analysis_summary": "Concise 2-3 sentence professional summary of the fit.",
-  "ats_compatibility_score": <number 0-100 based on formatting/structure/keywords>,
-  "quantification_feedback": ["Specific advice on where to add numbers/metrics"]
+  "ats_compatibility_score": <overall ATS score 0-100>,
+  "quantification_feedback": ["Specific advice on where to add numbers/metrics"],
+  "ats_breakdown": {{
+    "formatting_score": <number 0-100>,
+    "keyword_density": <number 0-100>,
+    "contact_info_score": <number 0-100>,
+    "readability_score": <number 0-100>,
+    "section_completeness": <number 0-100>,
+    "quantification_score": <number 0-100>,
+    "length_score": <number 0-100>,
+    "professional_language": <number 0-100>
+  }},
+  "ats_red_flags": ["specific issue 1", "specific issue 2"],
+  "ats_green_flags": ["positive aspect 1", "positive aspect 2"]
 }}
 """
         response = client.models.generate_content(model="gemini-1.5-flash", contents=prompt)
@@ -324,6 +346,11 @@ Return a JSON with this EXACT structure:
         analysis_summary = str(payload.get("analysis_summary", "AI analysis completed."))
         ats_score = float(payload.get("ats_compatibility_score", 0.0))
         quant_feedback = list(payload.get("quantification_feedback", []))
+        
+        # Extract new ATS breakdown fields
+        ats_breakdown = payload.get("ats_breakdown", {})
+        ats_red_flags = list(payload.get("ats_red_flags", []))
+        ats_green_flags = list(payload.get("ats_green_flags", []))
 
         return {
             "match_percentage": match_percentage,
@@ -333,6 +360,18 @@ Return a JSON with this EXACT structure:
             "analysis_summary": analysis_summary,
             "ats_compatibility_score": ats_score,
             "quantification_feedback": quant_feedback,
+            "ats_breakdown": {
+                "formatting_score": float(ats_breakdown.get("formatting_score", ats_score)),
+                "keyword_density": float(ats_breakdown.get("keyword_density", ats_score)),
+                "contact_info_score": float(ats_breakdown.get("contact_info_score", ats_score)),
+                "readability_score": float(ats_breakdown.get("readability_score", ats_score)),
+                "section_completeness": float(ats_breakdown.get("section_completeness", ats_score)),
+                "quantification_score": float(ats_breakdown.get("quantification_score", ats_score)),
+                "length_score": float(ats_breakdown.get("length_score", ats_score)),
+                "professional_language": float(ats_breakdown.get("professional_language", ats_score))
+            },
+            "ats_red_flags": ats_red_flags,
+            "ats_green_flags": ats_green_flags
         }
 
     except Exception as e:
@@ -387,9 +426,93 @@ Return a JSON with this EXACT structure:
 
         formatting_sc = formatting_score_from_text(resume_text)
 
-        # ATS score is heavily weighted on formatting in fallback
-        ats_raw = (0.7 * formatting_sc) + (0.3 * score)
-        ats = float(max(0, min(100, round(ats_raw))))
+        # Detailed ATS breakdown scoring for fallback
+        def calculate_detailed_ats_scores(text: str) -> dict:
+            txt = text or ""
+            lines = [l.strip() for l in txt.splitlines() if l.strip()]
+            
+            # 1. Formatting Score
+            section_keywords = ("experience", "work history", "employment", "education", "qualification", 
+                               "skills", "technologies", "projects", "certifications", "summary", "profile", "contact")
+            headings = sum(1 for l in lines[:40] if any(k in l.lower() for k in section_keywords))
+            formatting_score = min(100.0, (headings / 5.0) * 100)
+            
+            # 2. Keyword Density (based on job description match)
+            keyword_density = float(score)  # Use similarity score as proxy
+            
+            # 3. Contact Info Score
+            has_email = 1.0 if re.search(r"[^@]+@[^@]+\.[^@]+", txt) else 0.0
+            has_phone = 1.0 if re.search(r"\(?\d{3}\)?[-.\\s]?\d{3}[-.\\s]?\d{4}", txt) else 0.0
+            has_linkedin = 1.0 if re.search(r"linkedin\.com", txt, re.I) else 0.0
+            contact_info_score = ((has_email + has_phone + has_linkedin) / 3.0) * 100
+            
+            # 4. Readability Score
+            bullet_like = sum(1 for l in lines if l.startswith(("-", "*", "•", "➢", ">")) or re.match(r"^\d+[\).\s]", l))
+            bullet_fraction = bullet_like / max(1, len(lines))
+            readability_score = min(100.0, bullet_fraction * 250)
+            
+            # 5. Section Completeness
+            required_sections = ["experience", "education", "skills"]
+            found_sections = sum(1 for sec in required_sections if any(sec in l.lower() for l in lines[:40]))
+            section_completeness = (found_sections / len(required_sections)) * 100
+            
+            # 6. Quantification Score
+            numbers = re.findall(r"\d+%|\$\d+|\\d+\+", txt)
+            quantification_score = min(100.0, len(numbers) * 10)
+            
+            # 7. Length Score
+            word_count = len(txt.split())
+            if 300 <= word_count <= 800:
+                length_score = 100.0
+            elif word_count < 300:
+                length_score = (word_count / 300) * 100
+            else:
+                length_score = max(50.0, 100 - ((word_count - 800) / 20))
+            
+            # 8. Professional Language
+            casual_words = ["gonna", "wanna", "yeah", "cool", "awesome", "stuff"]
+            casual_count = sum(1 for word in casual_words if word in txt.lower())
+            professional_language = max(50.0, 100 - (casual_count * 20))
+            
+            return {
+                "formatting_score": formatting_score,
+                "keyword_density": keyword_density,
+                "contact_info_score": contact_info_score,
+                "readability_score": readability_score,
+                "section_completeness": section_completeness,
+                "quantification_score": quantification_score,
+                "length_score": length_score,
+                "professional_language": professional_language
+            }
+        
+        detailed_scores = calculate_detailed_ats_scores(resume_text)
+        
+        # Calculate overall ATS score from breakdown
+        ats = sum(detailed_scores.values()) / len(detailed_scores)
+        
+        # Detect red flags
+        red_flags = []
+        if detailed_scores["contact_info_score"] < 50:
+            red_flags.append("Missing or incomplete contact information")
+        if detailed_scores["section_completeness"] < 70:
+            red_flags.append("Missing standard resume sections")
+        if detailed_scores["quantification_score"] < 30:
+            red_flags.append("Lacks quantified achievements")
+        if detailed_scores["readability_score"] < 50:
+            red_flags.append("Limited use of bullet points")
+        if detailed_scores["length_score"] < 60:
+            red_flags.append("Resume length not optimal (aim for 1-2 pages)")
+        
+        # Detect green flags
+        green_flags = []
+        if detailed_scores["formatting_score"] > 70:
+            green_flags.append("Clear section headers present")
+        if detailed_scores["contact_info_score"] > 80:
+            green_flags.append("Complete contact information")
+        if detailed_scores["quantification_score"] > 50:
+            green_flags.append("Good use of metrics and numbers")
+        if detailed_scores["readability_score"] > 70:
+            green_flags.append("Well-formatted with bullet points")
 
         recommendations = [
             "Add clear headings: Experience, Education, Skills, Projects.",
@@ -406,6 +529,9 @@ Return a JSON with this EXACT structure:
             "analysis_summary": f"Fallback analysis: basic similarity {score:.1f}%",
             "ats_compatibility_score": ats,
             "quantification_feedback": ["Consider adding measurable metrics to 2-3 accomplishments to increase impact."],
+            "ats_breakdown": detailed_scores,
+            "ats_red_flags": red_flags,
+            "ats_green_flags": green_flags
         }
 
 # ---------- Routes ----------

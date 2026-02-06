@@ -11,6 +11,7 @@ import {
   AccordionTrigger,
 } from "../accordion";
 import { ScrollArea } from "../scroll-area";
+import ATSBreakdownDashboard from "./ATSBreakdownDashboard";
 
 /**
  * Defensive AnalysisDetailContent
@@ -74,6 +75,9 @@ const AnalysisDetailContent = ({ analysis }) => {
             <p className="text-slate-600 mt-4">{analysisSummary || "No summary provided by the analysis."}</p>
           </CardContent>
         </Card>
+
+        {/* Enhanced ATS Breakdown Dashboard */}
+        <ATSBreakdownDashboard analysis={analysis} />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
