@@ -360,15 +360,16 @@ Return a JSON with this EXACT structure:
             "analysis_summary": analysis_summary,
             "ats_compatibility_score": ats_score,
             "quantification_feedback": quant_feedback,
-            "ats_breakdown": ats_breakdown if ats_breakdown else {
-                "formatting_score": ats_score,
-                "keyword_density": ats_score,
-                "contact_info_score": ats_score,
-                "readability_score": ats_score,
-                "section_completeness": ats_score,
-                "quantification_score": ats_score,
-                "length_score": ats_score,
-                "professional_language": ats_score
+            "ats_breakdown": ats_breakdown if (ats_breakdown and isinstance(ats_breakdown, dict) and len(ats_breakdown) > 0) else {
+                # Calculate different scores per category
+                "formatting_score": min(100.0, (sum(1 for l in [l.strip() for l in (resume_text or "").splitlines() if l.strip()][:40] if any(k in l.lower() for k in ("experience", "education", "skills", "projects", "summary"))) / 4.0) * 100),
+                "keyword_density": float(ats_score),
+                "contact_info_score": ((1.0 if re.search(r"[^@]+@[^@]+\.[^@]+", resume_text or "") else 0.0) + (1.0 if re.search(r"\(?\d{3}\)?[-\.\s]?\d{3}[-\.\s]?\d{4}", resume_text or "") else 0.0) + (1.0 if re.search(r"linkedin\.com", resume_text or "", re.I) else 0.0)) / 3.0 * 100,
+                "readability_score": min(100.0, (sum(1 for l in [l.strip() for l in (resume_text or "").splitlines() if l.strip()] if l.startswith(("-", "*", "•"))) / max(1, len([l.strip() for l in (resume_text or "").splitlines() if l.strip()]))) * 250),
+                "section_completeness": (sum(1 for sec in ["experience", "education", "skills"] if any(sec in l.lower() for l in [l.strip() for l in (resume_text or "").splitlines() if l.strip()][:40])) / 3.0) * 100,
+                "quantification_score": min(100.0, len(re.findall(r"\d+%|\$\d+|\d+\+", resume_text or "")) * 10),
+                "length_score": 100.0 if 300 <= len((resume_text or "").split()) <= 800 else ((len((resume_text or "").split()) / 300) * 100 if len((resume_text or "").split()) < 300 else max(50.0, 100 - ((len((resume_text or "").split()) - 800) / 20))),
+                "professional_language": max(50.0, 100 - (sum(1 for word in ["gonna", "wanna", "yeah", "cool", "awesome"] if word in (resume_text or "").lower()) * 20))
             },
             "ats_red_flags": ats_red_flags if ats_red_flags else ["AI did not provide specific red flags"],
             "ats_green_flags": ats_green_flags if ats_green_flags else ["AI did not provide specific green flags"]
