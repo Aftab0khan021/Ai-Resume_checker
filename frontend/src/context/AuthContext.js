@@ -1,75 +1,71 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { jwtDecode } from "jwt-decode";
 import axios from "axios";
 
 const AuthContext = createContext();
 
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
+
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // You updated backend to run on port 8000 (usually) or as configured. 
-    // Adjust base URL if needed.
-    const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
+    // ── Logout ─────────────────────────────────────────────────────────────
+    // Defined first so it can be referenced in useEffect below.
+    const logout = useCallback(() => {
+        localStorage.removeItem("token");
+        setUser(null);
+    }, []);
 
+    // ── Bootstrap from stored token ─────────────────────────────────────
     useEffect(() => {
         const token = localStorage.getItem("token");
         if (token) {
             try {
                 const decoded = jwtDecode(token);
-                // Check expiry
-                if (decoded.exp * 1000 < Date.now()) {
+                // Check expiry with a 30-second buffer
+                if (decoded.exp * 1000 < Date.now() + 30_000) {
                     logout();
                 } else {
                     setUser({ username: decoded.sub });
                 }
-            } catch (err) {
+            } catch {
                 logout();
             }
         }
         setLoading(false);
-    }, []);
+    }, [logout]);
 
+    // ── Login ───────────────────────────────────────────────────────────────
     const login = async (username, password) => {
-        try {
-            const formData = new FormData();
-            formData.append("username", username);
-            formData.append("password", password);
+        const formData = new FormData();
+        formData.append("username", username.trim());
+        formData.append("password", password);
 
-            const res = await axios.post(`${API_URL}/auth/login`, formData);
-            const { access_token } = res.data;
+        const res = await axios.post(`${API_URL}/auth/login`, formData);
+        const { access_token } = res.data;
 
-            localStorage.setItem("token", access_token);
-            const decoded = jwtDecode(access_token);
-            setUser({ username: decoded.sub });
-            return true;
-        } catch (error) {
-            console.error("Login failed:", error);
-            throw error;
-        }
+        localStorage.setItem("token", access_token);
+        const decoded = jwtDecode(access_token);
+        setUser({ username: decoded.sub });
+        return true;
     };
 
+    // ── Register ────────────────────────────────────────────────────────────
     const register = async (username, email, password) => {
-        try {
-            await axios.post(`${API_URL}/auth/register`, {
-                username,
-                email,
-                password,
-            });
-            return true;
-        } catch (error) {
-            console.error("Registration failed:", error);
-            throw error;
-        }
+        await axios.post(`${API_URL}/auth/register`, {
+            username: username.trim(),
+            email: email ? email.trim() : undefined,
+            password,
+        });
+        return true;
     };
 
-    const logout = () => {
-        localStorage.removeItem("token");
-        setUser(null);
-    };
+    // ── Provide auth token getter (for API interceptor) ─────────────────
+    const getToken = () => localStorage.getItem("token");
 
     return (
-        <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, register, logout, loading, getToken }}>
             {children}
         </AuthContext.Provider>
     );
